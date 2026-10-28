@@ -132,7 +132,7 @@ export class HomeScene extends PlayScene {
     const shelf = add(this.add.graphics());
     shelf.fillStyle(0xc99a72, 1).fillRoundedRect(shelfX, 1.2 * T, 1.9 * T, 4, 2);
     NATIVE_ANIMALS.filter((a) => this.state.returned.includes(a)).forEach((a, i) => {
-      const fig = add(this.add.image(shelfX + 8 + i * 13, 1.2 * T, a).setOrigin(0.5, 1));
+      const fig = add(this.add.image(shelfX + 8 + i * 13, 1.2 * T, `figure_${a}`).setOrigin(0.5, 1));
       fig.setScale(Math.min(12 / fig.width, 10 / fig.height));
     });
 

@@ -2,7 +2,7 @@
 
 A cozy, wordless, mobile-friendly, top-down game: you play a small, round robot in an abandoned patch of Florida scrub. Your job is to clear the invasive plants and trash, and to gently relocate the invasive animals. You also rescue native plants, grow their seeds at your home-base nursery, and plant them back out, until gopher tortoises, Florida mice, scrub-jays and indigo snakes come home.
 
-Inspired by Animal Crossing, cozy games, and *The Wild Robot*. The art is a set of placeholders drawn in code, which will be replaced later.
+Inspired by Animal Crossing, cozy games, and *The Wild Robot*. The art pairs a storybook Florida scrub landscape with rounded, kid-friendly characters, illustrated controls, textured sand, and a warm little greenhouse home.
 
 ## Play
 
@@ -55,6 +55,8 @@ npm test           # unit + full-playthrough tests for the game systems
 npm run build      # typecheck + production build into dist/
 npm run smoke      # after build: Playwright drives the game in a phone viewport, screenshots → screenshots/
 npm run audio      # renders every sound offline, checks none is silent or clipping, writes WAV previews
+npm run art:build  # rebuilds production PNGs from retained illustration and vector sources
+npm run art:check  # checks brief coverage, 4× sizes, transparency, fonts, and splash
 ```
 
 Add `?debug` to the URL to expose `window.__game` for poking around in the console.

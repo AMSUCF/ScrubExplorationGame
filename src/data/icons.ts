@@ -1,5 +1,5 @@
-// The game is wordless: every action and status is an icon. Emoji are placeholders that render
-// everywhere; swap for drawn icons later by changing this table.
+// Semantic tokens stay plain strings for game logic. DOM and Phaser renderers resolve them to
+// the locally bundled illustrated pictograms, rather than platform-dependent emoji.
 export const ICON = {
   scan: '🔍',
   pull: '✊',
@@ -42,10 +42,28 @@ export const ICON = {
   postcard: '✉️',
   truck: '🚚',
   lab: '🔬',
-  slots: '🌱',
+  slots: '🧪',
   vase: '🏺',
   room: '🏡',
   star: '⭐',
+  music: '🎵',
+  sound: '🔊',
+  mute: '🔇',
+  fullscreen: '⛶',
+  play: '▶',
+  skip: '⏭',
+  pause: '⏸',
+  close: '✕',
+  menu: '☰',
+  back: '←',
+  camera: '📸',
+  pointer: '👇',
+  moon: '🌙',
 } as const;
 
 export type IconName = keyof typeof ICON;
+
+export const ICON_TEXTURE: ReadonlyMap<string, string> = new Map([
+  ...Object.entries(ICON).map(([key, token]) => [token, `ui_${key}`] as const),
+  ['🔔', 'ui_sound'], ['✦', 'ui_sparkle'], ['✔', 'ui_done'], ['🌅', 'ui_day'], ['🪫', 'ui_battery'],
+]);

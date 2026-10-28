@@ -3,6 +3,7 @@ import { audio } from '../audio';
 import { ICON } from '../data/icons';
 import { Action } from '../systems/actions';
 import { services } from '../services';
+import { renderIcons } from './icons';
 
 const BUTTON = 58;
 const RADIUS = 62;
@@ -51,7 +52,7 @@ export class RadialMenu {
     const radius = n <= 1 ? 0 : ring ? RADIUS + (n - 4) * 6 : RADIUS + 2 + n * 4;
     const lift = ring ? 0 : 40;
     this.extent = radius + BUTTON / 2 + 8;
-    this.root.innerHTML = actions
+    this.root.innerHTML = renderIcons(actions
       .map((a, i) => {
         const ang = ring ? start + (span * i) / n : start + (span * i) / Math.max(1, n - 1);
         const x = Math.cos(ang) * radius - BUTTON / 2;
@@ -71,7 +72,7 @@ export class RadialMenu {
         return `<button class="rbtn${a.enabled ? '' : ' off'}" data-i="${i}" style="transform: translate(${x}px, ${y}px); transition-delay: ${i * 25}ms"
           aria-label="${a.label}" title="${a.label}">${img}${main}${cost}${block}<span class="kbd">${i + 1}</span></button>`;
       })
-      .join('');
+      .join(''));
     requestAnimationFrame(() => this.root.classList.add('in'));
   }
 

@@ -11,12 +11,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.mjs",
-    "audio": "node scripts/audio-check.mjs"
+    "audio": "node scripts/audio-check.mjs",
+    "art:build": "node scripts/art/build.mjs",
+    "art:check": "node scripts/art/check.mjs",
+    "art:smoke": "node scripts/art-smoke.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"
   },
   "devDependencies": {
+    "sharp": "0.34.5",
     "typescript": "5.9.3",
     "vite": "6.4.5",
     "vitest": "3.2.7"

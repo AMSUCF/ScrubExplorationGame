@@ -32,7 +32,7 @@ export class WorldScene extends PlayScene {
   private stationSprites = new Map<Station, Phaser.GameObjects.Image>();
   private blockers!: Phaser.Physics.Arcade.StaticGroup;
   private dusk!: Phaser.GameObjects.Rectangle;
-  private pointer: Phaser.GameObjects.Text | null = null;
+  private pointer: Phaser.GameObjects.Image | null = null;
   private warnedEmpty = false;
   private duskHeard = -1;
 
@@ -237,7 +237,7 @@ export class WorldScene extends PlayScene {
     }
     if (!best || isAnimal(best)) return;
     const p = tileCenter(best.tx, best.ty);
-    this.pointer = this.add.text(p.x, p.y - 30, '👇', { fontSize: '18px' }).setOrigin(0.5).setResolution(3).setDepth(250000);
+    this.pointer = this.add.image(p.x, p.y - 30, 'ui_pointer').setDisplaySize(22, 22).setDepth(250000);
     this.pointer.setData('id', best.id);
     this.tweens.add({ targets: this.pointer, y: p.y - 22, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
   }
@@ -255,7 +255,7 @@ export class WorldScene extends PlayScene {
       pic.setScale(Math.min(18 / pic.width, 16 / pic.height));
       parts.push(pic);
     } else {
-      parts.push(this.add.text(1, -2, '💗', { fontSize: '13px' }).setOrigin(0.5).setResolution(3));
+      parts.push(this.add.image(1, -2, 'ui_heart').setDisplaySize(16, 16));
     }
     const c = this.add.container(view.sprite.x + 10, view.sprite.y - 26, parts).setDepth(260000).setScale(0);
     view.bubble = c;

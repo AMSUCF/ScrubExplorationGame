@@ -18,6 +18,11 @@ export class BootScene extends Phaser.Scene {
 
   /** Queue any finished illustrations listed in public/art/manifest.json (missing files are fine). */
   preload(): void {
+    this.load.on('progress', (progress: number) => {
+      const bar = document.querySelector<HTMLElement>('.loading-fill');
+      if (bar) bar.style.transform = `scaleX(${progress})`;
+      document.querySelector('[role="progressbar"]')?.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
+    });
     this.load.json('art-manifest', 'art/manifest.json');
     this.load.on('filecomplete-json-art-manifest', (_key: string, _type: string, keys: unknown) => {
       if (!Array.isArray(keys)) return;
@@ -28,8 +33,11 @@ export class BootScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     generateTextures(this);
+    const artKeys = new Set<string>(this.cache.json.get('art-manifest') as string[]);
     const cache = new Map<string, string>();
     services.icon = (key) => {
+      // DOM cards get the full 4x illustration, with no canvas downsampling or base64 copies.
+      if (artKeys.has(key)) return `${import.meta.env.BASE_URL}art/${key}.png`;
       let url = cache.get(key);
       if (!url) {
         url = this.textures.exists(key) ? (this.textures.getBase64(key) as string) : '';
@@ -39,7 +47,9 @@ export class BootScene extends Phaser.Scene {
     };
 
     const saved = loadGame();
-    const choice = await showTitle(!!saved);
+    const title = showTitle(!!saved);
+    document.querySelector('.app-loading')?.remove();
+    const choice = await title;
     startGame(this, choice === 'continue' && saved ? saved : newGame());
   }
 }

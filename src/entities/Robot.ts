@@ -4,6 +4,7 @@ import { ART_SCALE } from '../art/placeholders';
 import { audio } from '../audio';
 import { RobotMood } from '../audio/voices';
 import { Mood } from '../systems/actions';
+import { ICON_TEXTURE } from '../data/icons';
 
 const S = 1 / ART_SCALE;
 
@@ -193,10 +194,11 @@ export class Robot {
   }
 }
 
-/** Emoji (and optional texture) that drifts up and fades — used for emotes and pickups. */
+/** Illustrated pictogram (and optional species texture) that drifts up and fades. */
 export function floatIcon(scene: Phaser.Scene, x: number, y: number, text: string, tex?: string): void {
   const parts: Phaser.GameObjects.GameObject[] = [];
-  const label = scene.add.text(0, 0, text, { fontSize: '15px', fontFamily: 'Nunito, system-ui, sans-serif', color: '#3d3328', stroke: '#fffaf0', strokeThickness: 3 });
+  const match = [...ICON_TEXTURE].find(([token, key]) => text.includes(token) && scene.textures.exists(key));
+  const label = scene.add.text(0, 0, match ? text.replace(match[0], '') : text, { fontSize: '15px', fontFamily: 'Nunito, system-ui, sans-serif', color: '#3d3328', stroke: '#fffaf0', strokeThickness: 3 });
   label.setResolution(3).setOrigin(0, 0.5);
   if (tex) {
     const pic = scene.add.image(0, 0, tex).setOrigin(1, 0.5);
@@ -204,6 +206,7 @@ export function floatIcon(scene: Phaser.Scene, x: number, y: number, text: strin
     parts.push(pic);
   }
   parts.push(label);
+  if (match) parts.push(scene.add.image(label.width + 2, 0, match[1]).setDisplaySize(17, 17).setOrigin(0, .5));
   const c = scene.add.container(x, y, parts).setDepth(300000);
   scene.tweens.add({ targets: c, y: y - 26, alpha: { from: 1, to: 0 }, duration: 1100, ease: 'Sine.Out', onComplete: () => c.destroy() });
 }

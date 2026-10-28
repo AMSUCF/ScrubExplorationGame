@@ -9,11 +9,15 @@
     <meta name="description" content="Scrub Bot — a cozy game about a little robot restoring an abandoned Florida scrub." />
     <title>Scrub Bot</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet" />
+    <link rel="preload" href="./fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./art/splash.webp" as="image" />
   </head>
   <body>
+    <div class="app-loading" aria-label="Loading Scrub Bot">
+      <img src="./art/robot.png" alt="" width="88" height="88" />
+      <span>Something lovely is growing</span>
+      <div class="loading-track" role="progressbar" aria-label="Loading artwork" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="loading-fill"></div></div>
+    </div>
     <div id="game"></div>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>

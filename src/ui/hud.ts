@@ -6,6 +6,7 @@ import { ZONE_NAME, ZoneId } from '../data/map';
 import { batteryFraction } from '../systems/battery';
 import { GameState, NATIVE_PLANTS } from '../systems/state';
 import { services } from '../services';
+import { renderIcons } from './icons';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, parent?: HTMLElement): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -55,7 +56,7 @@ export class Hud {
 
     const buttons = el('div', 'buttons', top);
     const guide = el('button', 'icon-btn', buttons);
-    guide.innerHTML = `<span aria-hidden="true">${ICON.info}</span>`;
+    guide.innerHTML = renderIcons(ICON.info);
     guide.title = 'Field guide (G)';
     guide.setAttribute('aria-label', 'Field guide');
     this.guideBadge = el('span', 'badge', guide);
@@ -64,7 +65,7 @@ export class Hud {
     sound.setAttribute('aria-label', 'Sound');
     const paintSound = () => {
       const on = audio.musicOn || audio.sfxOn;
-      sound.innerHTML = `<span aria-hidden="true">${on ? '🔊' : '🔇'}</span>`;
+      sound.innerHTML = renderIcons(on ? ICON.sound : ICON.mute);
       sound.setAttribute('aria-pressed', String(on));
     };
     paintSound();
@@ -74,7 +75,7 @@ export class Hud {
       audio.toggleAll();
     });
     const menu = el('button', 'icon-btn', buttons);
-    menu.innerHTML = '<span aria-hidden="true">☰</span>';
+    menu.innerHTML = renderIcons(ICON.menu);
     menu.title = 'Menu';
     menu.setAttribute('aria-label', 'Menu');
     menu.addEventListener('click', cb.onMenu);
@@ -96,9 +97,12 @@ export class Hud {
     this.set('battery', `${pct}/${state.batteryMax}`, () => {
       this.batteryFill.style.width = `${frac * 100}%`;
       this.batteryFill.dataset.level = frac < 0.2 ? 'low' : frac < 0.45 ? 'mid' : 'high';
-      this.batteryText.textContent = `${ICON.battery} ${pct}`;
+      this.batteryText.innerHTML = renderIcons(`${ICON.battery} ${pct}`);
+      this.batteryFill.parentElement?.setAttribute('aria-valuenow', String(pct));
+      this.batteryFill.parentElement?.setAttribute('aria-valuemax', String(state.batteryMax));
+      this.batteryFill.parentElement?.setAttribute('aria-valuemin', '0');
     });
-    this.set('day', String(state.day), () => (this.dayText.textContent = `${ICON.day} ${state.day}`));
+    this.set('day', String(state.day), () => (this.dayText.innerHTML = renderIcons(`${ICON.day} ${state.day}`)));
 
     this.set('zone', `${zone}:${health}`, () => {
       this.zoneWrap.hidden = zone === null;
@@ -126,7 +130,7 @@ export class Hud {
     if (state.crate) chips.push(chip(`${ICON.crate}${img(state.crate.species)}`));
     chips.push(chip(`${ICON.parts}${state.parts}`));
     const inv = chips.join('');
-    this.set('inv', inv, () => (this.inventory.innerHTML = inv));
+    this.set('inv', inv, () => (this.inventory.innerHTML = renderIcons(inv)));
   }
 
   setVisible(on: boolean): void {

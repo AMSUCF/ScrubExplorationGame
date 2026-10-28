@@ -9,6 +9,7 @@ import { GameState, Postcard } from '../systems/state';
 import { audio } from '../audio';
 import { services } from '../services';
 import { setInputEnabled } from './input';
+import { renderIcons } from './icons';
 
 export type IconSource = (key: string) => string;
 
@@ -18,7 +19,14 @@ const icon: IconSource = (key) => services.icon(key);
 function overlay(className: string, html: string): { root: HTMLElement; close: () => void } {
   const root = document.createElement('div');
   root.className = `overlay ${className}`;
-  root.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`;
+  root.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${className === 'title' ? 'Scrub Bot' : className}">${renderIcons(html)}</div>`;
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')].filter((b) => !b.closest('[hidden]'));
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+  });
   document.body.appendChild(root);
   root.addEventListener('click', (e) => {
     if ((e.target as HTMLElement).closest('button')) audio.sfx('click');
@@ -72,23 +80,49 @@ export function showTitle(hasSave: boolean): Promise<'continue' | 'new'> {
   return new Promise((resolve) => {
     const { root, close } = overlay(
       'title',
-      `<div class="title-art">${img('pod0', 'title-pod')}${img('robot', 'title-robot')}</div>
-       <h1>Scrub Bot</h1>
-       <div class="row">
-         ${hasSave ? `<button class="primary big-icon" data-act="continue" aria-label="Continue">▶</button>` : ''}
-         <button class="${hasSave ? 'big-icon' : 'primary big-icon'}" data-act="new" aria-label="${hasSave ? 'New game' : 'Start'}">${hasSave ? '✦' : '▶'}</button>
-       </div>`,
+      `<img class="title-landscape" src="${import.meta.env.BASE_URL}art/splash.webp" alt="A gentle little robot plants a seedling beside a gopher tortoise, with a scrub-jay and a cozy pod cottage in the Florida scrub." />
+       <div class="title-wash" aria-hidden="true"></div>
+       <header class="title-header"><span class="title-brand">${ICON.plant}<span>A Florida scrub story</span></span>
+         <div class="title-controls"><button class="icon-btn title-sound" data-act="sound" aria-label="Sound" aria-pressed="${audio.musicOn || audio.sfxOn}">${audio.musicOn || audio.sfxOn ? ICON.sound : ICON.mute}</button></div>
+       </header>
+       <main class="title-copy">
+         <p class="title-kicker">Small acts. Wild wonders.</p>
+         <h1>Scrub<span>Bot<span class="title-leaf" aria-hidden="true">${ICON.plant}</span></span></h1>
+         <p class="title-description">A little kindness.<br> A place to grow.</p>
+         <div class="title-actions">
+           <button class="primary title-start" data-act="${hasSave ? 'continue' : 'new'}" aria-label="${hasSave ? 'Continue' : 'Start'}">${ICON.play}<span>${hasSave ? 'Keep growing' : 'Let’s grow'}</span><svg class="title-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L19 5M6 5H19V18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+           ${hasSave ? `<button class="title-new" data-act="new" aria-label="New game">${ICON.sparkle}<span>A fresh beginning</span></button>` : ''}
+           <p class="title-save" aria-live="polite">${ICON.done} Your little world saves as you go</p>
+         </div>
+       </main>
+       <footer class="title-footer"><span>Take your time. Nature does.</span><span class="title-habitat">${ICON.day} Made for curious hearts</span></footer>
+       <div class="title-motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>`,
     );
     root.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       const act = btn?.dataset.act;
-      if (act === 'new' && hasSave && !armable(btn!)) return;
+      if (act === 'sound') {
+        audio.unlock();
+        audio.toggleAll();
+        const on = audio.musicOn || audio.sfxOn;
+        btn!.innerHTML = renderIcons(on ? ICON.sound : ICON.mute);
+        btn!.setAttribute('aria-pressed', String(on));
+        return;
+      }
+      if (act === 'new' && hasSave && !armable(btn!)) {
+        root.querySelector('.title-save')!.textContent = 'Start fresh? Tap once more to begin again.';
+        setTimeout(() => {
+          if (!root.isConnected) return;
+          root.querySelector('.title-save')!.innerHTML = renderIcons(`${ICON.done} Your little world saves as you go`);
+        }, 2500);
+        return;
+      }
       if (act === 'continue' || act === 'new') {
         close();
         resolve(act);
       }
     });
-    focusFirst(root);
+    root.querySelector<HTMLButtonElement>('.title-start')?.focus({ preventScroll: true });
   });
 }
 
@@ -144,7 +178,7 @@ export function showFieldGuide(state: GameState, openId?: SpeciesId): Promise<vo
     const detail = root.querySelector<HTMLElement>('.detail')!;
     const body = root.querySelector<HTMLElement>('.guide-body')!;
     const openDetail = (id: SpeciesId) => {
-      detail.innerHTML = renderDetail(GUIDE_BY_ID[id], state);
+      detail.innerHTML = renderIcons(renderDetail(GUIDE_BY_ID[id], state));
       detail.hidden = false;
       body.hidden = true;
     };

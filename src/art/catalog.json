@@ -1,0 +1,542 @@
+{
+  "palmetto": [
+    34,
+    30
+  ],
+  "rosemary": [
+    30,
+    28
+  ],
+  "oak": [
+    38,
+    38
+  ],
+  "hickory": [
+    36,
+    42
+  ],
+  "cogon": [
+    30,
+    30
+  ],
+  "pepper": [
+    44,
+    44
+  ],
+  "airpotato": [
+    34,
+    30
+  ],
+  "natal": [
+    30,
+    30
+  ],
+  "tortoise": [
+    28,
+    20
+  ],
+  "mouse": [
+    14,
+    11
+  ],
+  "jay": [
+    19,
+    16
+  ],
+  "indigo": [
+    41,
+    16
+  ],
+  "cat": [
+    23,
+    18
+  ],
+  "tegu": [
+    30,
+    14
+  ],
+  "iguana": [
+    34,
+    16
+  ],
+  "anole": [
+    16,
+    8
+  ],
+  "robot": [
+    36,
+    36
+  ],
+  "robot_blink": [
+    36,
+    36
+  ],
+  "robot_happy": [
+    36,
+    36
+  ],
+  "antenna": [
+    8,
+    16
+  ],
+  "pod0": [
+    104,
+    74
+  ],
+  "pod1": [
+    104,
+    74
+  ],
+  "pod2": [
+    104,
+    74
+  ],
+  "pod_shut": [
+    104,
+    74
+  ],
+  "cradle": [
+    64,
+    34
+  ],
+  "monitor": [
+    44,
+    34
+  ],
+  "bench": [
+    64,
+    36
+  ],
+  "vase": [
+    24,
+    30
+  ],
+  "recycler": [
+    36,
+    40
+  ],
+  "pad": [
+    40,
+    32
+  ],
+  "thicket": [
+    40,
+    36
+  ],
+  "burrow": [
+    30,
+    20
+  ],
+  "ground_sand": [
+    128,
+    128
+  ],
+  "ground_oak": [
+    128,
+    128
+  ],
+  "ground_rosemary": [
+    128,
+    128
+  ],
+  "ground_base": [
+    128,
+    128
+  ],
+  "room0": [
+    384,
+    256
+  ],
+  "room1": [
+    480,
+    288
+  ],
+  "room2": [
+    576,
+    320
+  ],
+  "hydro_empty_dry": [
+    28,
+    36
+  ],
+  "hydro_empty_wet": [
+    28,
+    36
+  ],
+  "hydro_sown_dry": [
+    28,
+    36
+  ],
+  "hydro_sown_wet": [
+    28,
+    36
+  ],
+  "hydro_sprout_dry": [
+    28,
+    36
+  ],
+  "hydro_sprout_wet": [
+    28,
+    36
+  ],
+  "hydro_ready_dry": [
+    28,
+    36
+  ],
+  "hydro_ready_wet": [
+    28,
+    36
+  ],
+  "sprig_palmetto": [
+    12,
+    21
+  ],
+  "sprig_rosemary": [
+    12,
+    21
+  ],
+  "sprig_oak": [
+    12,
+    21
+  ],
+  "sprig_hickory": [
+    12,
+    21
+  ],
+  "crate": [
+    20,
+    15
+  ],
+  "tire": [
+    24,
+    18
+  ],
+  "bottle": [
+    16,
+    18
+  ],
+  "fence": [
+    32,
+    32
+  ],
+  "board": [
+    46,
+    34
+  ],
+  "window": [
+    52,
+    36
+  ],
+  "doormat": [
+    48,
+    14
+  ],
+  "polaroid": [
+    18,
+    21
+  ],
+  "postcard": [
+    22,
+    16
+  ],
+  "pin": [
+    6,
+    6
+  ],
+  "sparkle": [
+    10,
+    10
+  ],
+  "ring": [
+    32,
+    32
+  ],
+  "bubble": [
+    34,
+    32
+  ],
+  "dust": [
+    10,
+    10
+  ],
+  "flame": [
+    20,
+    40
+  ],
+  "edge_bush": [
+    48,
+    48
+  ],
+  "decor_grass": [
+    18,
+    16
+  ],
+  "decor_lichen": [
+    16,
+    12
+  ],
+  "decor_flower": [
+    12,
+    14
+  ],
+  "decor_frond": [
+    20,
+    12
+  ],
+  "light_mote": [
+    8,
+    8
+  ],
+  "green_anole": [
+    16,
+    8
+  ],
+  "figure_tortoise": [
+    12,
+    12
+  ],
+  "figure_mouse": [
+    12,
+    12
+  ],
+  "figure_jay": [
+    12,
+    12
+  ],
+  "figure_indigo": [
+    12,
+    12
+  ],
+  "ui_scan": [
+    64,
+    64
+  ],
+  "ui_pull": [
+    64,
+    64
+  ],
+  "ui_cut": [
+    64,
+    64
+  ],
+  "ui_pickup": [
+    64,
+    64
+  ],
+  "ui_trim": [
+    64,
+    64
+  ],
+  "ui_seeds": [
+    64,
+    64
+  ],
+  "ui_sprig": [
+    64,
+    64
+  ],
+  "ui_crate": [
+    64,
+    64
+  ],
+  "ui_jar": [
+    64,
+    64
+  ],
+  "ui_greet": [
+    64,
+    64
+  ],
+  "ui_info": [
+    64,
+    64
+  ],
+  "ui_plant": [
+    64,
+    64
+  ],
+  "ui_sleep": [
+    64,
+    64
+  ],
+  "ui_recycle": [
+    64,
+    64
+  ],
+  "ui_dropoff": [
+    64,
+    64
+  ],
+  "ui_water": [
+    64,
+    64
+  ],
+  "ui_pot": [
+    64,
+    64
+  ],
+  "ui_clear": [
+    64,
+    64
+  ],
+  "ui_board": [
+    64,
+    64
+  ],
+  "ui_monitor": [
+    64,
+    64
+  ],
+  "ui_enter": [
+    64,
+    64
+  ],
+  "ui_exit": [
+    64,
+    64
+  ],
+  "ui_home": [
+    64,
+    64
+  ],
+  "ui_battery": [
+    64,
+    64
+  ],
+  "ui_parts": [
+    64,
+    64
+  ],
+  "ui_bag": [
+    64,
+    64
+  ],
+  "ui_heart": [
+    64,
+    64
+  ],
+  "ui_sparkle": [
+    64,
+    64
+  ],
+  "ui_question": [
+    64,
+    64
+  ],
+  "ui_bang": [
+    64,
+    64
+  ],
+  "ui_wait": [
+    64,
+    64
+  ],
+  "ui_done": [
+    64,
+    64
+  ],
+  "ui_sad": [
+    64,
+    64
+  ],
+  "ui_lock": [
+    64,
+    64
+  ],
+  "ui_up": [
+    64,
+    64
+  ],
+  "ui_down": [
+    64,
+    64
+  ],
+  "ui_day": [
+    64,
+    64
+  ],
+  "ui_eye": [
+    64,
+    64
+  ],
+  "ui_postcard": [
+    64,
+    64
+  ],
+  "ui_truck": [
+    64,
+    64
+  ],
+  "ui_lab": [
+    64,
+    64
+  ],
+  "ui_slots": [
+    64,
+    64
+  ],
+  "ui_vase": [
+    64,
+    64
+  ],
+  "ui_room": [
+    64,
+    64
+  ],
+  "ui_star": [
+    64,
+    64
+  ],
+  "ui_music": [
+    64,
+    64
+  ],
+  "ui_sound": [
+    64,
+    64
+  ],
+  "ui_mute": [
+    64,
+    64
+  ],
+  "ui_fullscreen": [
+    64,
+    64
+  ],
+  "ui_play": [
+    64,
+    64
+  ],
+  "ui_skip": [
+    64,
+    64
+  ],
+  "ui_pause": [
+    64,
+    64
+  ],
+  "ui_close": [
+    64,
+    64
+  ],
+  "ui_menu": [
+    64,
+    64
+  ],
+  "ui_back": [
+    64,
+    64
+  ],
+  "ui_camera": [
+    64,
+    64
+  ],
+  "ui_pointer": [
+    64,
+    64
+  ],
+  "ui_moon": [
+    64,
+    64
+  ]
+}

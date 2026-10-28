@@ -1,0 +1,101 @@
+// Visual/integration checks for the complete delivered art set, using the production build.
+import assert from 'node:assert/strict';
+import { mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { preview } from 'vite';
+
+const { chromium } = createRequire(import.meta.url)('playwright');
+mkdirSync('screenshots', { recursive: true });
+const server = await preview({ preview: { port: 4175, strictPort: true }, logLevel: 'warn' });
+let browser;
+try {
+  browser = await chromium.launch();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const errors = [], external = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('console', m => m.type() === 'error' && errors.push(m.text()));
+  page.on('request', req => {
+    const url = new URL(req.url());
+    if (['http:', 'https:'].includes(url.protocol) && url.origin !== 'http://localhost:4175') external.push(url.href);
+  });
+  const title = async () => {
+    await page.goto('http://localhost:4175/?debug');
+    await page.locator('.title.in').waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(300);
+  };
+  const layout = async (name, width, height) => {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(200);
+    const fit = await page.evaluate(() => {
+      const start = document.querySelector('.title-start').getBoundingClientRect();
+      const headline = document.querySelector('.title h1').getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(document.querySelector('.title h1'));
+      const lettering = range.getBoundingClientRect();
+      return start.left >= 0 && start.right <= innerWidth && start.top >= 0 && start.bottom <= innerHeight &&
+        headline.top >= 0 && headline.bottom < start.top && lettering.right <= innerWidth && document.documentElement.scrollWidth === innerWidth;
+    });
+    assert(fit, `${name}: title layout overflows or overlaps`);
+    await page.screenshot({ path: `screenshots/title-${name}.png` });
+  };
+
+  await title();
+  assert(await page.evaluate(() => document.fonts.check('700 16px Nunito') && document.fonts.check('650 32px Fraunces')), 'Local fonts did not load');
+  assert.equal(await page.locator('.title-landscape').evaluate(el => el.naturalWidth), 1536);
+  await layout('desktop', 1440, 1000);
+  await layout('phone', 390, 844);
+  await layout('small-phone', 320, 568);
+  await layout('landscape', 844, 390);
+
+  const sound = page.getByRole('button', { name: 'Sound', exact: true });
+  const before = await sound.getAttribute('aria-pressed');
+  await sound.click();
+  assert.notEqual(await sound.getAttribute('aria-pressed'), before, 'Title sound toggle did not change');
+  await sound.click();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+  await page.waitForFunction(() => window.__game.scene.isActive('World'));
+  await page.waitForTimeout(450);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: 'screenshots/world-final.png' });
+  const missing = await page.evaluate(() => {
+    const g = window.__game;
+    return g.cache.json.get('art-manifest').filter(k => !k.startsWith('room') && !k.startsWith('ground_') && !g.textures.exists(k));
+  });
+  assert.deepEqual(missing, [], 'Production illustrations missing Phaser textures');
+
+  for (let level = 0; level < 3; level++) {
+    await page.evaluate(level => {
+      const g = window.__game;
+      const state = g.scene.getScene(g.scene.isActive('World') ? 'World' : 'Home').state;
+      state.homeLevel = level;
+      state.returned = ['tortoise', 'mouse', 'jay', 'indigo'];
+      g.scene.stop('World'); g.scene.stop('Home'); g.scene.start('Home', { state });
+    }, level);
+    await page.waitForFunction(() => window.__game.scene.isActive('Home'));
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.waitForTimeout(450);
+    assert(await page.evaluate(level => window.__game.textures.exists(`room${level}`), level), `Missing room ${level}`);
+    await page.screenshot({ path: `screenshots/room-${level}-desktop.png` });
+  }
+
+  await title();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.waitForFunction(() => window.__game.scene.isActive('Home'));
+  assert.equal(await page.evaluate(() => window.__game.scene.getScene('Home').state.homeLevel), 2, 'Continue did not restore the room');
+  await title();
+  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  assert(await page.getByRole('button', { name: 'Continue', exact: true }).isVisible(), 'A single New game tap discarded the save');
+  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await page.waitForFunction(() => window.__game.scene.isActive('Intro'));
+
+  assert.deepEqual(errors, [], 'Browser errors');
+  assert.deepEqual(external, [], 'Unexpected external HTTP requests');
+  console.log('ART SMOKE OK — responsive title, local fonts, all sprites, three rooms, sound, continue/new-game safeguard; no browser errors or external HTTP requests.');
+} finally {
+  await browser?.close();
+  await server.close();
+}

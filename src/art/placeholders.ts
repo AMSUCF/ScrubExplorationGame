@@ -8,6 +8,7 @@ import { PAL } from '../data/palette';
 import { hash2 } from '../systems/rng';
 import { generateHomeTextures } from './home';
 import { generateRobotTextures } from './robot';
+import catalog from './catalog.json';
 
 export const ART_SCALE = 2;
 
@@ -415,28 +416,41 @@ const ZONE_GROUND: Record<ZoneId, [string, string]> = {
 /** Logical size of one seamless ground tile from the illustrator. */
 export const GROUND_TILE = 128;
 
-function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>) {
-  c.fillStyle = PAL.sand;
+function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>, art: (key: string) => CanvasImageSource | null) {
+  const edge = art('edge_bush');
+  c.fillStyle = tiles.sand ?? PAL.sand;
   c.fillRect(0, 0, WORLD_W, WORLD_H);
-  // Overlapping blobs per tile give soft, organic zone borders instead of a grid.
-  for (let ty = 0; ty < MAP_H; ty++) {
-    for (let tx = 0; tx < MAP_W; tx++) {
-      const zone = zoneAt(tx, ty);
-      c.fillStyle = tiles[zone] ?? ZONE_GROUND[zone][0];
-      c.beginPath();
-      c.arc(tx * TILE + 16 + (hash2(tx, ty, 4) - 0.5) * 8, ty * TILE + 16 + (hash2(tx, ty, 5) - 0.5) * 8, 23, 0, Math.PI * 2);
-      c.fill();
+  // Feather zone masks together once at boot. Individual tile circles never show through.
+  const layer = document.createElement('canvas');
+  layer.width = WORLD_W; layer.height = WORLD_H;
+  const mask = layer.getContext('2d')!;
+  for (const zone of ['oak', 'rosemary', 'base'] as ZoneId[]) {
+    mask.clearRect(0, 0, WORLD_W, WORLD_H);
+    mask.filter = 'blur(15px)';
+    mask.fillStyle = '#ffffff';
+    mask.beginPath();
+    for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < MAP_W; tx++) {
+      if (zoneAt(tx, ty) !== zone) continue;
+      const x = tx * TILE + 16 + (hash2(tx, ty, 4) - .5) * 8;
+      const y = ty * TILE + 16 + (hash2(tx, ty, 5) - .5) * 8;
+      mask.moveTo(x + 25, y); mask.arc(x, y, 25, 0, Math.PI * 2);
     }
+    mask.fill();
+    mask.filter = 'none';
+    mask.globalCompositeOperation = 'source-in';
+    mask.fillStyle = tiles[zone] ?? ZONE_GROUND[zone][0];
+    mask.fillRect(0, 0, WORLD_W, WORLD_H);
+    mask.globalCompositeOperation = 'source-over';
+    c.drawImage(layer, 0, 0);
   }
-  // A few large, faint shade patches so the sand isn't flat.
-  c.globalAlpha = 0.35;
-  for (let ty = 0; ty < MAP_H; ty += 2) {
-    for (let tx = 0; tx < MAP_W; tx += 2) {
-      if (hash2(tx, ty, 3) > 0.3) continue;
-      c.fillStyle = ZONE_GROUND[zoneAt(tx, ty)][1];
-      c.beginPath();
-      c.ellipse(tx * TILE + 32, ty * TILE + 32, 40 + hash2(tx, ty, 6) * 30, 26 + hash2(tx, ty, 8) * 16, 0, 0, Math.PI * 2);
-      c.fill();
+  // Low-contrast, diffuse sun and canopy washes, with no hard circular edges.
+  for (let ty = 0; ty < MAP_H; ty += 3) {
+    for (let tx = 0; tx < MAP_W; tx += 3) {
+      const x = tx * TILE, y = ty * TILE, r = 35 + hash2(tx, ty, 3) * 55;
+      const wash = c.createRadialGradient(x, y, 0, x, y, r);
+      wash.addColorStop(0, hash2(tx, ty, 6) > .5 ? 'rgba(118, 133, 83, .06)' : 'rgba(255, 251, 221, .14)');
+      wash.addColorStop(1, 'rgba(255, 251, 221, 0)');
+      c.fillStyle = wash; c.fillRect(x - r, y - r, r * 2, r * 2);
     }
   }
   c.globalAlpha = 1;
@@ -460,24 +474,49 @@ function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>) {
       }
     }
   }
-  // A worn path ring at home base.
-  c.strokeStyle = 'rgba(160, 132, 92, 0.35)';
-  c.lineWidth = 10;
+  // Soft desire paths connect the cottage and the two stations.
+  c.save();
+  c.filter = 'blur(5px)';
+  c.strokeStyle = 'rgba(167, 141, 98, .13)';
+  c.lineWidth = 17;
   c.beginPath();
-  c.arc(28 * TILE + 16, 35 * TILE + 16, 3.2 * TILE, 0, Math.PI * 2);
+  c.moveTo(784, 1165); c.quadraticCurveTo(910, 1195, 913, 1093);
+  c.moveTo(1040, 1165); c.quadraticCurveTo(934, 1190, 913, 1120);
+  c.moveTo(900, 1152); c.bezierCurveTo(852, 1110, 875, 1000, 848, 927);
   c.stroke();
+  c.restore();
+  // Tiny, non-interactive habitat details: wiry grasses, lichen, shed fans and golden blooms.
+  // Keep the action area around the pod clear; these are baked into the ground, not blockers.
+  for (let ty = 1; ty < MAP_H - 1; ty++) for (let tx = 1; tx < MAP_W - 1; tx++) {
+    const n = hash2(tx, ty, 31);
+    if (n > .23 || Math.hypot(tx - 28, ty - 35) < 4) continue;
+    const zone = zoneAt(tx, ty);
+    const key = zone === 'rosemary' ? 'decor_lichen' : n < .028 ? 'decor_flower' : n < .06 ? 'decor_frond' : 'decor_grass';
+    const image = art(key);
+    if (!image) continue;
+    const x = tx * TILE + hash2(tx, ty, 32) * 22, y = ty * TILE + hash2(tx, ty, 33) * 22;
+    const [w, h] = catalog[key as keyof typeof catalog];
+    const size = .6 + hash2(tx, ty, 34) * .5;
+    c.drawImage(image, x, y, w * size, h * size);
+  }
   // Wild, unrestored scrub at the map edge.
   for (let tx = 0; tx < MAP_W; tx++) {
-    for (const ty of [0, MAP_H - 1]) edgeBush(c, tx, ty);
+    for (const ty of [0, MAP_H - 1]) edgeBush(c, tx, ty, edge);
   }
   for (let ty = 0; ty < MAP_H; ty++) {
-    for (const tx of [0, MAP_W - 1]) edgeBush(c, tx, ty);
+    for (const tx of [0, MAP_W - 1]) edgeBush(c, tx, ty, edge);
   }
 }
 
-function edgeBush(c: Ctx, tx: number, ty: number) {
+function edgeBush(c: Ctx, tx: number, ty: number, art: CanvasImageSource | null) {
   const x = tx * TILE + 16;
   const y = ty * TILE + 16;
+  if (art) {
+    const size = 48 + hash2(tx, ty, 21) * 12;
+    c.save(); c.translate(x, y); c.rotate((hash2(tx, ty, 22) - .5) * .3);
+    c.drawImage(art, -size / 2, -size / 2, size, size); c.restore();
+    return;
+  }
   circle(c, x, y, 22 + hash2(tx, ty, 21) * 6, PAL.edgeDark);
   circle(c, x - 4, y - 5, 12 + hash2(tx, ty, 22) * 5, PAL.edge);
 }
@@ -520,6 +559,13 @@ export function generateTextures(scene: Phaser.Scene): void {
   make(scene, 'sparkle', 10, 10, drawSparkle);
   make(scene, 'ring', 32, 32, drawRing);
 
+  // Optional illustrations and the pictogram set also get logical-size Phaser textures.
+  // Room shells are lazy, and seamless tiles are assembled into the ground below.
+  for (const [key, [w, h]] of Object.entries(catalog)) {
+    if (scene.textures.exists(key) || key.startsWith('room') || key.startsWith('ground_')) continue;
+    if (artImage(scene, key)) make(scene, key, w, h, () => undefined);
+  }
+
   // The ground is big, so it's drawn at 1× — soft edges suit it anyway.
   if (scene.textures.exists('ground')) scene.textures.remove('ground');
   const ground = scene.textures.createCanvas('ground', WORLD_W, WORLD_H);
@@ -535,7 +581,7 @@ export function generateTextures(scene: Phaser.Scene): void {
         tiles[zone] = pattern;
       }
     }
-    drawGround(ctx, tiles);
+    drawGround(ctx, tiles, (key) => artImage(scene, key));
     ground.refresh();
   }
 }

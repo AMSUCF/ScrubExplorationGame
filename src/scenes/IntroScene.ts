@@ -8,6 +8,8 @@ import { audio } from '../audio';
 import { Robot } from '../entities/Robot';
 import { services } from '../services';
 import { GameState, isAnimal } from '../systems/state';
+import { ICON } from '../data/icons';
+import { renderIcons } from '../ui/icons';
 
 const S = 1 / ART_SCALE;
 
@@ -125,7 +127,7 @@ export class IntroScene extends Phaser.Scene {
     const trouble = tileCenter(BASE_CENTER.tx - 2, BASE_CENTER.ty - 7);
     cam.pan(trouble.x, trouble.y, 1100, 'Sine.easeInOut');
     this.time.delayedCall(1400, () => {
-      const rosemary = this.add.text(trouble.x + 6, trouble.y - 30, '🥀', { fontSize: '16px' }).setOrigin(0.5).setResolution(3).setDepth(300000);
+      const rosemary = this.add.image(trouble.x + 6, trouble.y - 30, 'ui_sad').setDisplaySize(16, 16).setDepth(300000);
       this.tweens.add({ targets: rosemary, y: trouble.y - 40, alpha: 0, duration: 1200, delay: 600 });
     });
     this.time.delayedCall(2600, () => cam.pan(this.robot!.x, this.robot!.y, 900, 'Sine.easeInOut'));
@@ -137,7 +139,7 @@ export class IntroScene extends Phaser.Scene {
   private addSkip(): void {
     const btn = document.createElement('button');
     btn.className = 'skip-btn';
-    btn.textContent = '⏭';
+    btn.innerHTML = renderIcons(ICON.skip);
     btn.setAttribute('aria-label', 'Skip intro');
     btn.addEventListener('click', () => this.finish());
     document.body.appendChild(btn);
