@@ -37,7 +37,9 @@ const game = new Phaser.Game({
   },
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { keyboard: false, mouse: true, touch: true, activePointers: 2 },
-  render: { antialias: true, roundPixels: false },
+  // zoom !== 1 would otherwise switch Phaser into pixel-art mode (nearest sampling, rounded positions),
+  // which makes the painted ground and sprites blocky on high-DPI phones.
+  render: { antialias: true, roundPixels: false, pixelArt: false },
   scene: [BootScene, IntroScene, WorldScene, HomeScene],
 });
 game.registry.set('dpr', dpr);

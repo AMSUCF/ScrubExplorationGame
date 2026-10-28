@@ -427,9 +427,13 @@ function release(canvas: HTMLCanvasElement) {
   canvas.height = 0;
 }
 
+/** Let the browser paint and handle input between the slow stages of drawing the ground. */
+const breathe = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
 /** Draws the whole world floor into `c`, which is `scale` device pixels per world pixel. */
-function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: string) => CanvasImageSource | null) {
+async function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: string) => CanvasImageSource | null) {
   const edge = art('edge_bush');
+  c.save();
   c.setTransform(scale, 0, 0, scale, 0, 0);
   c.fillStyle = tiles(c, 'sand') ?? PAL.sand;
   c.fillRect(0, 0, WORLD_W, WORLD_H);
@@ -439,11 +443,13 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
   const layer = document.createElement('canvas');
   layer.width = WORLD_W; layer.height = WORLD_H;
   const mask = layer.getContext('2d')!;
-  const fill = document.createElement('canvas');
+  // At 1× the texture is painted straight into the mask, as it always was; only 2× needs a second canvas.
+  const fill = scale === 1 ? layer : document.createElement('canvas');
   fill.width = WORLD_W * scale; fill.height = WORLD_H * scale;
   const paint = fill.getContext('2d')!;
   paint.setTransform(scale, 0, 0, scale, 0, 0);
   for (const zone of ['oak', 'rosemary', 'base'] as ZoneId[]) {
+    await breathe();
     mask.clearRect(0, 0, WORLD_W, WORLD_H);
     mask.filter = 'blur(15px)';
     mask.fillStyle = '#ffffff';
@@ -456,8 +462,10 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
     }
     mask.fill();
     mask.filter = 'none';
-    paint.clearRect(0, 0, WORLD_W, WORLD_H);
-    paint.drawImage(layer, 0, 0, WORLD_W, WORLD_H);
+    if (fill !== layer) {
+      paint.clearRect(0, 0, WORLD_W, WORLD_H);
+      paint.drawImage(layer, 0, 0, WORLD_W, WORLD_H);
+    }
     paint.globalCompositeOperation = 'source-in';
     paint.fillStyle = tiles(paint, zone) ?? ZONE_GROUND[zone][0];
     paint.fillRect(0, 0, WORLD_W, WORLD_H);
@@ -466,6 +474,7 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
   }
   release(layer);
   release(fill);
+  await breathe();
   // Low-contrast, diffuse sun and canopy washes, with no hard circular edges.
   for (let ty = 0; ty < MAP_H; ty += 3) {
     for (let tx = 0; tx < MAP_W; tx += 3) {
@@ -477,6 +486,7 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
     }
   }
   c.globalAlpha = 1;
+  await breathe();
   // Feather several grain/leaf-litter variants over each habitat instead of repeating one tile.
   const stamps = new Map<string, HTMLCanvasElement>();
   for (let ty = 2; ty < MAP_H - 2; ty += 3) for (let tx = 2; tx < MAP_W - 2; tx += 3) {
@@ -525,6 +535,7 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
     }
   }
   stamps.forEach(release);
+  await breathe();
   // Soft desire paths connect the cottage and the two stations. Canvas blur is measured in device
   // pixels, not world pixels, so it scales with the ground.
   c.save();
@@ -537,6 +548,7 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
   c.moveTo(900, 1152); c.bezierCurveTo(852, 1110, 875, 1000, 848, 927);
   c.stroke();
   c.restore();
+  await breathe();
   // Tiny, non-interactive habitat details: wiry grasses, lichen, shed fans and golden blooms.
   // Keep the action area around the pod clear; these are baked into the ground, not blockers.
   for (let ty = 1; ty < MAP_H - 1; ty++) for (let tx = 1; tx < MAP_W - 1; tx++) {
@@ -562,6 +574,7 @@ function drawGround(c: Ctx, scale: number, tiles: GroundPatterns, art: (key: str
   for (let ty = 0; ty < MAP_H; ty += 1.35) {
     for (const tx of [0, MAP_W - 1]) edgeBush(c, tx, ty, edge);
   }
+  c.restore();
 }
 
 function edgeBush(c: Ctx, tx: number, ty: number, art: CanvasImageSource | null) {
@@ -617,35 +630,54 @@ export function generateTextures(scene: Phaser.Scene): void {
   make(scene, 'ring', 32, 32, drawRing);
 
   // Optional illustrations and the pictogram set also get logical-size Phaser textures.
-  // Room shells are lazy, and seamless tiles are assembled into the ground below.
+  // Room shells are lazy, and seamless tiles are assembled into the ground by buildGround().
   for (const [key, [w, h]] of Object.entries(catalog)) {
     if (scene.textures.exists(key) || key.startsWith('room') || key.startsWith('ground_')) continue;
     if (artImage(scene, key)) make(scene, key, w, h, () => undefined);
   }
+}
 
-  // The ground is one big canvas texture. Display it with groundImage(), which scales it back to world size.
+/**
+ * The world floor: one big canvas texture, drawn in stages so the title screen stays responsive.
+ * Display it with groundImage(), which scales it back to world size.
+ */
+export async function buildGround(scene: Phaser.Scene): Promise<void> {
   if (scene.textures.exists('ground')) scene.textures.remove('ground');
   const scale = groundScale(scene);
   const ground = scene.textures.createCanvas('ground', WORLD_W * scale, WORLD_H * scale);
-  if (ground) {
-    (ground.customData as { scale?: number }).scale = scale;
-    const tiles: GroundPatterns = (ctx, zone) => {
-      const img = artImage(scene, `ground_${zone}`);
-      const pattern = img && ctx.createPattern(img, 'repeat');
-      if (!pattern) return null;
-      const iw = (img as HTMLImageElement).width || GROUND_TILE;
-      pattern.setTransform(new DOMMatrix().scale(GROUND_TILE / iw));
-      return pattern;
-    };
-    drawGround(ground.getContext(), scale, tiles, (key) => artImage(scene, key));
-    ground.refresh();
+  if (!ground) return;
+  // Phaser keeps a full-size ImageData snapshot of every CanvasTexture for pixel helpers the ground
+  // never uses; at 2× that is a blank 40 MB copy. The canvas itself stays (context-loss restore needs it).
+  Object.assign(ground as unknown as Record<string, unknown>, { imageData: null, data: null, pixels: null, buffer: null });
+  (ground.customData as { scale?: number }).scale = scale;
+  const tiles: GroundPatterns = (ctx, zone) => {
+    const img = artImage(scene, `ground_${zone}`);
+    const pattern = img && ctx.createPattern(img, 'repeat');
+    if (!pattern) return null;
+    const iw = (img as HTMLImageElement).width || GROUND_TILE;
+    pattern.setTransform(new DOMMatrix().scale(GROUND_TILE / iw));
+    return pattern;
+  };
+  try {
+    await drawGround(ground.getContext(), scale, tiles, (key) => artImage(scene, key));
+  } catch (e) {
+    // Never leave the game without a floor: plain sand still plays.
+    console.warn('Ground art failed; using plain sand.', e);
+    const c = ground.getContext();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = PAL.sand;
+    c.fillRect(0, 0, ground.width, ground.height);
   }
+  ground.refresh();
 }
 
-/** 2× where the GPU and the device can hold it (3584×2816), otherwise the original 1×. */
+/**
+ * 2× (3584×2816) on WebGL when the GPU and the device can hold it; otherwise the original 1×.
+ * The Canvas renderer is the fallback for weak or GPU-less devices, so it keeps 1×.
+ */
 function groundScale(scene: Phaser.Scene): number {
-  const renderer = scene.renderer as Partial<Phaser.Renderer.WebGL.WebGLRenderer>;
-  const maxTexture = renderer.getMaxTextureSize?.() ?? 4096;
+  if (scene.renderer.type !== Phaser.WEBGL) return 1;
+  const maxTexture = (scene.renderer as Phaser.Renderer.WebGL.WebGLRenderer).getMaxTextureSize();
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
   if (memory < 2) return 1;
   return Math.max(1, Math.min(GROUND_SCALE, Math.floor(maxTexture / Math.max(WORLD_W, WORLD_H))));

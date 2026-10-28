@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { generateEffectTextures } from '../art/effects';
-import { generateTextures } from '../art/placeholders';
+import { buildGround, generateTextures } from '../art/placeholders';
 import { services } from '../services';
 import { loadGame } from '../systems/save';
 import { GameState, newGame } from '../systems/state';
@@ -50,8 +50,21 @@ export class BootScene extends Phaser.Scene {
 
     const saved = loadGame();
     const title = showTitle(!!saved);
-    document.querySelector('.app-loading')?.remove();
+    const loading = document.querySelector<HTMLElement>('.app-loading');
+    loading?.remove();
+    // The large ground is painted while the title is up (after it has had a frame to appear).
+    let groundReady = false;
+    const ground = new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      .then(() => buildGround(this))
+      .then(() => void (groundReady = true));
     const choice = await title;
+    // A very quick tap on a slow device: bring the loading screen back for the last moment.
+    if (!groundReady && loading) {
+      loading.querySelector('span')!.textContent = 'Unrolling the scrub';
+      document.body.appendChild(loading);
+    }
+    await ground;
+    loading?.remove();
     startGame(this, choice === 'continue' && saved ? saved : newGame());
   }
 }

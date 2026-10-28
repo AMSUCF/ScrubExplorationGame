@@ -131,6 +131,33 @@ try {
   await page.getByRole('button', { name: 'New game', exact: true }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('Intro'));
 
+  // Low-memory devices and the Canvas renderer keep the 1× ground; it must still fill the world.
+  for (const [name, init] of [
+    ['low-memory', () => Object.defineProperty(Navigator.prototype, 'deviceMemory', { get: () => 1 })],
+    ['canvas-renderer', () => {
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...rest) { return /webgl/.test(type) ? null : getContext.call(this, type, ...rest); };
+    }],
+  ]) {
+    const fallback = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const p = await fallback.newPage();
+    p.on('pageerror', e => errors.push(`${name}: ${e.message}`));
+    await p.addInitScript(init);
+    await p.goto('http://localhost:4175/?debug');
+    await p.getByRole('button', { name: 'Start', exact: true }).click();
+    await p.getByRole('button', { name: 'Skip intro', exact: true }).click();
+    await p.waitForFunction(() => window.__game.scene.isActive('World'));
+    const ground = await p.evaluate(() => {
+      const g = window.__game, t = g.textures.get('ground');
+      const image = g.scene.getScene('World').children.list.find(o => o.texture?.key === 'ground');
+      return { scale: t.customData.scale, width: t.getSourceImage().width, shown: image.displayWidth, renderer: g.renderer.type };
+    });
+    assert.deepEqual([ground.scale, ground.width, ground.shown], [1, 1792, 1792], `${name}: 1× ground fallback`);
+    assert.equal(ground.renderer, name === 'canvas-renderer' ? 1 : 2, `${name}: unexpected Phaser renderer`);
+    await p.screenshot({ path: `screenshots/ground-1x-${name}.png` });
+    await fallback.close();
+  }
+
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(external, [], 'Unexpected external HTTP requests');
   console.log('ART SMOKE OK — responsive title, local fonts, full-resolution canopies, distinct habitat grounds, desktop/phone grove views, all sprites, three rooms, sound, continue/new-game safeguard; no browser errors or external HTTP requests.');
