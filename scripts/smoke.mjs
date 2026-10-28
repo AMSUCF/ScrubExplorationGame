@@ -43,8 +43,8 @@ try {
   await active('Intro');
   await page.waitForTimeout(3600);
   await page.screenshot({ path: 'screenshots/1-intro.png' });
-  await page.getByRole('button', { name: 'Skip intro' }).click();
-  await active('World');
+  // Let the whole wordless intro play (pans, emotes, fade) — it must finish without errors.
+  await page.waitForFunction(() => window.__game?.scene.isActive('World'), null, { timeout: 20000 });
   await page.waitForTimeout(900);
   await page.screenshot({ path: 'screenshots/2-world.png' });
 

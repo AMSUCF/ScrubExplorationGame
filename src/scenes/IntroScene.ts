@@ -116,12 +116,12 @@ export class IntroScene extends Phaser.Scene {
   private panToTrouble(): void {
     const cam = this.cameras.main;
     const trouble = tileCenter(BASE_CENTER.tx - 2, BASE_CENTER.ty - 7);
-    cam.pan(trouble.x, trouble.y, 1100, 'Sine.InOut');
+    cam.pan(trouble.x, trouble.y, 1100, 'Sine.easeInOut');
     this.time.delayedCall(1400, () => {
       const rosemary = this.add.text(trouble.x + 6, trouble.y - 30, '🥀', { fontSize: '16px' }).setOrigin(0.5).setResolution(3).setDepth(300000);
       this.tweens.add({ targets: rosemary, y: trouble.y - 40, alpha: 0, duration: 1200, delay: 600 });
     });
-    this.time.delayedCall(2600, () => cam.pan(this.robot!.x, this.robot!.y, 900, 'Sine.InOut'));
+    this.time.delayedCall(2600, () => cam.pan(this.robot!.x, this.robot!.y, 900, 'Sine.easeInOut'));
     this.time.delayedCall(3600, () => this.robot!.emote('❗'));
     this.time.delayedCall(4200, () => this.robot!.emote('love'));
     this.time.delayedCall(5000, () => this.finish());
