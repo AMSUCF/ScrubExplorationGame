@@ -1,52 +1,51 @@
 import { describe, expect, it } from 'vitest';
+import { homeLayout } from '../src/data/home';
 import { STATIONS, zoneAt } from '../src/data/map';
-import { Target, getAction, performAction } from '../src/systems/actions';
 import { nightTick } from '../src/systems/dayCycle';
-import { GameState, newGame } from '../src/systems/state';
+import { newGame } from '../src/systems/state';
+import { doVerb } from './helpers';
 
 const pad = STATIONS.find((s) => s.kind === 'pad')!;
-const trays = STATIONS.filter((s) => s.kind === 'tray');
-
-function act(s: GameState, target: Target | null, spot: { tx: number; ty: number } | null = null): boolean {
-  const a = getAction(s, target, spot);
-  if (!a?.enabled) return false;
-  return performAction(s, a).ok;
-}
 
 /** A tireless robot that does every chore each day — proves the scrub can be fully restored. */
 describe('full playthrough', () => {
-  it.each([1, 2, 3, 99])('all native wildlife returns (seed %i)', (seed) => {
+  it.each([1, 2, 3, 99])('all native wildlife returns and grows (seed %i)', (seed) => {
     const s = newGame(seed);
-    for (let day = 0; day < 15 && !s.won; day++) {
+    for (let day = 0; day < 20 && !s.won; day++) {
       s.battery = 1e6;
-      // Clear invasives, trash and invasive animals.
       for (let pass = 0; pass < 4; pass++) {
         for (const e of [...s.entities]) {
           if (e.kind !== 'invasivePlant' && e.kind !== 'hazard' && e.kind !== 'invasiveAnimal') continue;
-          for (let i = 0; i < 4 && s.entities.includes(e) && act(s, { type: 'entity', entity: e }); i++);
+          const t = { type: 'entity' as const, entity: e };
+          doVerb(s, t, 'scan');
+          for (let i = 0; i < 4 && s.entities.includes(e); i++) if (!doVerb(s, t, e.kind === 'invasiveAnimal' ? 'capture' : 'remove')) break;
           s.bag = 0;
-          act(s, { type: 'station', station: pad });
+          doVerb(s, { type: 'station', station: pad }, 'dropoff');
         }
       }
-      // Gather acorns, tend the nursery, and plant seedlings out in the oak scrub.
       for (const e of s.entities) {
-        if (e.kind === 'nativePlant' && e.species === 'oak') act(s, { type: 'entity', entity: e });
+        if (e.kind === 'nativePlant' && e.species === 'oak') {
+          doVerb(s, { type: 'entity', entity: e }, 'scan');
+          doVerb(s, { type: 'entity', entity: e }, 'collect');
+        }
       }
-      s.selectedSeed = 'oak';
-      for (const t of trays) {
-        act(s, { type: 'station', station: t }); // pot up / sow / water, whichever applies
-        act(s, { type: 'station', station: t });
-        act(s, { type: 'station', station: t });
+      for (const item of homeLayout(s.homeLevel, s.trays.length, s.vases.length)) {
+        if (item.kind !== 'slot') continue;
+        const t = { type: 'home' as const, item };
+        doVerb(s, t, 'pot');
+        doVerb(s, t, 'sow', 'oak');
+        doVerb(s, t, 'water');
       }
       for (let ty = 2; ty < 16 && s.seedlings.oak > 0; ty += 2) {
         for (let tx = 22; tx < 44 && s.seedlings.oak > 0; tx += 2) {
-          if (zoneAt(tx, ty) === 'oak') act(s, null, { tx, ty });
+          if (zoneAt(tx, ty) === 'oak') doVerb(s, { type: 'self', spot: { tx, ty } }, 'plant', 'oak');
         }
       }
       nightTick(s);
     }
     expect(s.stats.planted).toBeGreaterThan(0);
-    expect(s.returned.sort()).toEqual(['indigo', 'jay', 'mouse', 'tortoise']);
+    expect([...s.returned].sort()).toEqual(['indigo', 'jay', 'mouse', 'tortoise']);
     expect(s.won).toBe(true);
+    expect(s.populations.tortoise).toBeGreaterThan(1);
   });
 });

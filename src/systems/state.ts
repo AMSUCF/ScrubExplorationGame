@@ -13,7 +13,7 @@ import {
 } from '../data/species';
 import { Rng, mulberry32, pick, randInt } from './rng';
 
-export const STATE_VERSION = 1;
+export const STATE_VERSION = 2;
 
 export interface InvasivePlantEntity {
   id: number;
@@ -33,6 +33,7 @@ export interface NativePlantEntity {
   planted: boolean;
   plantedDay: number;
   lastSeedDay: number;
+  lastSprigDay?: number;
   /** Set the first time the plant is free of nearby invasives. */
   rescued: boolean;
 }
@@ -86,10 +87,24 @@ export interface CrateContents {
   name?: string;
 }
 
+/** Wordless postcards: rendered as pictures from these fields. */
 export interface Postcard {
   day: number;
-  title: string;
-  body: string;
+  kind: 'adopted' | 'relocated' | 'anoles';
+  species: InvasiveAnimalId;
+  name?: string;
+  count?: number;
+}
+
+/** A first-sighting "photo" pinned to the corkboard. */
+export interface Photo {
+  species: NativeAnimalId;
+  day: number;
+}
+
+export interface PopulationRecord {
+  day: number;
+  pop: Partial<Record<NativeAnimalId, number>>;
 }
 
 export interface GameState {
@@ -99,7 +114,11 @@ export interface GameState {
   nextId: number;
   battery: number;
   batteryMax: number;
+  /** Battery upgrades bought. */
   upgrades: number;
+  hydroUpgrades: number;
+  vaseUpgrades: number;
+  homeLevel: number;
   parts: number;
   /** Trash + bulbils being carried. */
   bag: number;
@@ -108,7 +127,10 @@ export interface GameState {
   crate: CrateContents | null;
   seeds: Record<NativePlantId, number>;
   seedlings: Record<NativePlantId, number>;
-  selectedSeed: NativePlantId;
+  /** Cut sprigs waiting to be arranged in a vase. */
+  sprigs: Record<NativePlantId, number>;
+  /** Sprigs arranged in each vase at home (max 3 each). */
+  vases: NativePlantId[][];
   entities: Entity[];
   trays: TrayState[];
   scanned: SpeciesId[];
@@ -118,7 +140,15 @@ export interface GameState {
   /** Number of anoles waiting on the pad. */
   padAnoles: number;
   postcards: Postcard[];
+  photos: Photo[];
+  populations: Partial<Record<NativeAnimalId, number>>;
+  history: PopulationRecord[];
+  sightings: Partial<Record<NativeAnimalId, number>>;
+  /** Species already counted as sighted today (one sighting per species per day). */
+  sightedToday: NativeAnimalId[];
   robot: { x: number; y: number };
+  location: 'outside' | 'home';
+  introSeen: boolean;
   catNameIndex: number;
   stats: {
     invasivesRemoved: number;
@@ -131,7 +161,7 @@ export interface GameState {
 
 export const NATIVE_PLANTS: NativePlantId[] = ['palmetto', 'rosemary', 'oak', 'hickory'];
 
-function emptyPlantRecord(): Record<NativePlantId, number> {
+export function emptyPlantRecord(): Record<NativePlantId, number> {
   return { palmetto: 0, rosemary: 0, oak: 0, hickory: 0 };
 }
 
@@ -249,13 +279,17 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
     battery: BATTERY_START,
     batteryMax: BATTERY_START,
     upgrades: 0,
+    hydroUpgrades: 0,
+    vaseUpgrades: 0,
+    homeLevel: 0,
     parts: 0,
     bag: 0,
     jar: 0,
     crate: null,
     seeds: emptyPlantRecord(),
     seedlings: emptyPlantRecord(),
-    selectedSeed: 'palmetto',
+    sprigs: emptyPlantRecord(),
+    vases: [[]],
     entities: [],
     trays: Array.from({ length: TRAY_COUNT }, () => ({ seed: null, growth: 0, watered: false })),
     scanned: [],
@@ -263,7 +297,14 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
     pad: [],
     padAnoles: 0,
     postcards: [],
+    photos: [],
+    populations: {},
+    history: [],
+    sightings: {},
+    sightedToday: [],
     robot: { ...ROBOT_SPAWN },
+    location: 'outside',
+    introSeen: false,
     catNameIndex: 0,
     stats: { invasivesRemoved: 0, trashCollected: 0, planted: 0, relocated: 0 },
     won: false,

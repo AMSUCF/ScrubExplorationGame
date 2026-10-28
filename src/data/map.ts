@@ -50,28 +50,36 @@ export function tileCenter(tx: number, ty: number): { x: number; y: number } {
   return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
 }
 
-export type StationKind = 'dock' | 'recycler' | 'pad' | 'tray';
+export type StationKind = 'pod' | 'recycler' | 'pad';
 
 export interface Station {
   kind: StationKind;
+  /** Tile the station is anchored on (its front-centre). */
   tx: number;
   ty: number;
-  /** Tray index for nursery trays. */
-  index?: number;
+  /** Footprint in tiles, centred on tx and extending upward from ty. */
+  w: number;
+  h: number;
 }
 
+/** The landed pod is the robot's home; recycler and pad sit outside it. */
 export const STATIONS: Station[] = [
-  { kind: 'dock', tx: BASE_CENTER.tx, ty: BASE_CENTER.ty - 2 },
-  { kind: 'recycler', tx: BASE_CENTER.tx - 4, ty: BASE_CENTER.ty + 1 },
-  { kind: 'pad', tx: BASE_CENTER.tx + 4, ty: BASE_CENTER.ty + 1 },
-  { kind: 'tray', tx: BASE_CENTER.tx - 3, ty: BASE_CENTER.ty + 4, index: 0 },
-  { kind: 'tray', tx: BASE_CENTER.tx - 1, ty: BASE_CENTER.ty + 4, index: 1 },
-  { kind: 'tray', tx: BASE_CENTER.tx + 1, ty: BASE_CENTER.ty + 4, index: 2 },
-  { kind: 'tray', tx: BASE_CENTER.tx + 3, ty: BASE_CENTER.ty + 4, index: 3 },
+  { kind: 'pod', tx: BASE_CENTER.tx, ty: BASE_CENTER.ty - 2, w: 3, h: 2 },
+  { kind: 'recycler', tx: BASE_CENTER.tx - 4, ty: BASE_CENTER.ty + 1, w: 1, h: 1 },
+  { kind: 'pad', tx: BASE_CENTER.tx + 4, ty: BASE_CENTER.ty + 1, w: 1, h: 1 },
 ];
+
+export const POD = STATIONS[0];
 
 export const ROBOT_SPAWN = tileCenter(BASE_CENTER.tx, BASE_CENTER.ty);
 
+export function stationTiles(s: Station): { tx: number; ty: number }[] {
+  const out: { tx: number; ty: number }[] = [];
+  const x0 = s.tx - Math.floor(s.w / 2);
+  for (let dy = 0; dy < s.h; dy++) for (let dx = 0; dx < s.w; dx++) out.push({ tx: x0 + dx, ty: s.ty - dy });
+  return out;
+}
+
 export function isStationTile(tx: number, ty: number): boolean {
-  return STATIONS.some((s) => s.tx === tx && s.ty === ty);
+  return STATIONS.some((s) => stationTiles(s).some((t) => t.tx === tx && t.ty === ty));
 }

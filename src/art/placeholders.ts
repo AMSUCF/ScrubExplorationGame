@@ -1,4 +1,4 @@
-// ALL visuals live here. Each texture is drawn with Canvas 2D at ART_SCALE× and displayed at
+// Visuals live in src/art/ (this file: world + shared helpers; robot.ts; home.ts). Each texture is drawn with Canvas 2D at ART_SCALE× and displayed at
 // 1/ART_SCALE so it stays crisp on phones. To swap in real art later, load image files under the
 // same texture keys in BootScene and skip the matching draw call — nothing else needs to change.
 import Phaser from 'phaser';
@@ -6,12 +6,14 @@ import { MAP_H, MAP_W, TILE, WORLD_H, WORLD_W } from '../config';
 import { ZoneId, zoneAt } from '../data/map';
 import { PAL } from '../data/palette';
 import { hash2 } from '../systems/rng';
+import { generateHomeTextures } from './home';
+import { generateRobotTextures } from './robot';
 
 export const ART_SCALE = 2;
 
-type Ctx = CanvasRenderingContext2D;
+export type Ctx = CanvasRenderingContext2D;
 
-function make(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void) {
+export function make(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void) {
   if (scene.textures.exists(key)) scene.textures.remove(key);
   const tex = scene.textures.createCanvas(key, w * ART_SCALE, h * ART_SCALE);
   if (!tex) return;
@@ -27,18 +29,18 @@ function make(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: 
 
 // --- tiny drawing helpers ---------------------------------------------------------
 
-function ellipse(c: Ctx, x: number, y: number, rx: number, ry: number, fill: string) {
+export function ellipse(c: Ctx, x: number, y: number, rx: number, ry: number, fill: string) {
   c.fillStyle = fill;
   c.beginPath();
   c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
   c.fill();
 }
 
-function circle(c: Ctx, x: number, y: number, r: number, fill: string) {
+export function circle(c: Ctx, x: number, y: number, r: number, fill: string) {
   ellipse(c, x, y, r, r, fill);
 }
 
-function roundRect(c: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string) {
+export function roundRect(c: Ctx, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string) {
   c.beginPath();
   c.roundRect(x, y, w, h, r);
   c.fillStyle = fill;
@@ -50,7 +52,7 @@ function roundRect(c: Ctx, x: number, y: number, w: number, h: number, r: number
   }
 }
 
-function line(c: Ctx, x1: number, y1: number, x2: number, y2: number, color: string, width = 1.5) {
+export function line(c: Ctx, x1: number, y1: number, x2: number, y2: number, color: string, width = 1.5) {
   c.strokeStyle = color;
   c.lineWidth = width;
   c.beginPath();
@@ -59,7 +61,7 @@ function line(c: Ctx, x1: number, y1: number, x2: number, y2: number, color: str
   c.stroke();
 }
 
-function blade(c: Ctx, x: number, y: number, len: number, lean: number, color: string, width = 1.6) {
+export function blade(c: Ctx, x: number, y: number, len: number, lean: number, color: string, width = 1.6) {
   c.strokeStyle = color;
   c.lineWidth = width;
   c.beginPath();
@@ -68,41 +70,11 @@ function blade(c: Ctx, x: number, y: number, len: number, lean: number, color: s
   c.stroke();
 }
 
-function shadow(c: Ctx, x: number, y: number, rx: number, ry = rx * 0.35) {
+export function shadow(c: Ctx, x: number, y: number, rx: number, ry = rx * 0.35) {
   ellipse(c, x, y, rx, ry, PAL.shadow);
 }
 
 // --- characters -------------------------------------------------------------------
-
-function drawRobot(c: Ctx) {
-  shadow(c, 18, 32, 13, 4);
-  // Treads
-  roundRect(c, 4, 22, 11, 10, 4, PAL.robotTread);
-  roundRect(c, 21, 22, 11, 10, 4, PAL.robotTread);
-  for (let i = 0; i < 3; i++) {
-    line(c, 6, 24.5 + i * 3, 13, 24.5 + i * 3, '#6a625c', 1);
-    line(c, 23, 24.5 + i * 3, 30, 24.5 + i * 3, '#6a625c', 1);
-  }
-  // Boxy body
-  roundRect(c, 8, 13, 20, 13, 2.5, PAL.robotBody, PAL.robotShade);
-  roundRect(c, 8, 22, 20, 4, 1.5, PAL.robotShade);
-  // Little rust freckles + a leaf sticker
-  circle(c, 11, 16, 0.9, PAL.robotShade);
-  circle(c, 24, 18, 1.1, PAL.robotShade);
-  ellipse(c, 20, 17, 2.4, 1.3, PAL.leafDark);
-  // Neck
-  line(c, 18, 13, 18, 9, PAL.robotEye, 2);
-  // Binocular eyes
-  roundRect(c, 9, 2, 8.5, 8, 3, PAL.robotEye);
-  roundRect(c, 18.5, 2, 8.5, 8, 3, PAL.robotEye);
-  circle(c, 13.2, 6, 2.8, PAL.robotLens);
-  circle(c, 22.8, 6, 2.8, PAL.robotLens);
-  circle(c, 14.2, 5, 1, PAL.white);
-  circle(c, 23.8, 5, 1, PAL.white);
-  // Arms
-  line(c, 8, 18, 4, 21, PAL.robotEye, 1.8);
-  line(c, 28, 18, 32, 21, PAL.robotEye, 1.8);
-}
 
 function drawCrate(c: Ctx) {
   roundRect(c, 1, 2, 18, 12, 2, PAL.wood, PAL.woodDark);
@@ -374,27 +346,6 @@ function drawBurrow(c: Ctx) {
 
 // --- base stations ------------------------------------------------------------------
 
-function drawDock(c: Ctx) {
-  shadow(c, 20, 36, 17, 4);
-  roundRect(c, 4, 22, 32, 13, 4, '#8e8f88', '#6f706a');
-  roundRect(c, 9, 25, 22, 7, 3, '#b8e0a8');
-  line(c, 12, 28.5, 28, 28.5, '#7fbf6a', 1);
-  // Solar panel on a post
-  line(c, 20, 22, 20, 12, '#6f706a', 2);
-  c.save();
-  c.translate(20, 8);
-  c.rotate(-0.12);
-  roundRect(c, -15, -6, 30, 11, 1.5, '#38506b', '#24364a');
-  for (let x = -10; x <= 10; x += 5) line(c, x, -5.5, x, 4.5, '#5c7da0', 0.8);
-  line(c, -14.5, -0.5, 14.5, -0.5, '#5c7da0', 0.8);
-  c.restore();
-  // Little bolt
-  c.fillStyle = '#ffd34d';
-  c.beginPath();
-  c.moveTo(21, 24); c.lineTo(17, 29); c.lineTo(20, 29); c.lineTo(19, 33); c.lineTo(23, 28); c.lineTo(20, 28);
-  c.fill();
-}
-
 function drawRecycler(c: Ctx) {
   shadow(c, 18, 37, 15, 3.5);
   roundRect(c, 4, 10, 28, 26, 3, '#5f9a6e', '#477a55');
@@ -424,28 +375,6 @@ function drawPad(c: Ctx) {
   roundRect(c, 25, 0, 14, 9, 2, '#f3ead4', PAL.woodDark);
   circle(c, 32, 5.5, 2, PAL.ink);
   for (const [x, y] of [[29.5, 3], [31.3, 2], [33, 2], [34.6, 3]]) circle(c, x, y, 0.8, PAL.ink);
-}
-
-function drawTray(c: Ctx, stage: 'empty' | 'sown' | 'sprout' | 'ready', wet: boolean) {
-  shadow(c, 15, 21, 14, 2.5);
-  roundRect(c, 1, 8, 28, 12, 2, PAL.wood, PAL.woodDark);
-  roundRect(c, 3, 9, 24, 7, 1.5, wet ? '#5a4330' : '#8a6b4b');
-  if (stage === 'sown') for (const x of [7, 12, 17, 22]) circle(c, x, 12.5, 0.9, '#d9c08a');
-  if (stage === 'sprout') {
-    for (const x of [7, 12, 17, 22]) {
-      line(c, x, 13, x, 9, PAL.leaf, 1.2);
-      ellipse(c, x - 1.4, 9, 1.6, 0.9, PAL.leafLight);
-      ellipse(c, x + 1.4, 9, 1.6, 0.9, PAL.leafLight);
-    }
-  }
-  if (stage === 'ready') {
-    for (const x of [8, 15, 22]) {
-      line(c, x, 13, x, 4, PAL.leafDark, 1.4);
-      ellipse(c, x - 2.5, 6, 3, 1.6, PAL.leaf);
-      ellipse(c, x + 2.5, 5, 3, 1.6, PAL.leaf);
-      ellipse(c, x, 2.5, 1.8, 2.4, PAL.leafLight);
-    }
-  }
 }
 
 // --- fx -----------------------------------------------------------------------------
@@ -542,7 +471,8 @@ function edgeBush(c: Ctx, tx: number, ty: number) {
 // --- registry -----------------------------------------------------------------------
 
 export function generateTextures(scene: Phaser.Scene): void {
-  make(scene, 'robot', 36, 36, drawRobot);
+  generateRobotTextures(scene);
+  generateHomeTextures(scene);
   make(scene, 'crate', 20, 15, drawCrate);
 
   make(scene, 'cogon', 30, 30, drawCogon);
@@ -570,13 +500,8 @@ export function generateTextures(scene: Phaser.Scene): void {
   make(scene, 'jay', 19, 16, drawJay);
   make(scene, 'indigo', 41, 16, drawIndigo);
 
-  make(scene, 'dock', 40, 40, drawDock);
   make(scene, 'recycler', 36, 40, drawRecycler);
   make(scene, 'pad', 40, 32, drawPad);
-  for (const stage of ['empty', 'sown', 'sprout', 'ready'] as const) {
-    make(scene, `tray_${stage}_dry`, 30, 22, (c) => drawTray(c, stage, false));
-    make(scene, `tray_${stage}_wet`, 30, 22, (c) => drawTray(c, stage, true));
-  }
 
   make(scene, 'sparkle', 10, 10, drawSparkle);
   make(scene, 'ring', 32, 32, drawRing);

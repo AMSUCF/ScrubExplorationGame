@@ -1,20 +1,25 @@
-// The single context button: figure out what the robot can do right now, and do it.
-import { BAG_CAPACITY, BATTERY_UPGRADE_COST, JAR_CAPACITY } from '../config';
-import { Station, ZoneId, inBounds, tileCenter, zoneAt } from '../data/map';
+// What the robot can do with a tapped thing: a list of icon actions for the radial menu.
+// Pure logic — no Phaser — so every interaction is unit-testable.
+import { BAG_CAPACITY, JAR_CAPACITY } from '../config';
+import { HomeItem } from '../data/home';
+import { ICON } from '../data/icons';
+import { Station, inBounds, tileCenter, zoneAt } from '../data/map';
 import {
   CAT_NAMES,
-  GUIDE_BY_ID,
   HAZARDS,
+  HazardId,
   INVASIVE_ANIMALS,
   INVASIVE_PLANTS,
+  InvasivePlantId,
   NativePlantId,
-  SEED_NOUN,
   SEED_YIELD,
   SpeciesId,
   speciesName,
 } from '../data/species';
-import { canAfford, canUpgrade, spend, upgrade } from './battery';
-import { nextSeed, pot, sow, trayStage, water } from './nursery';
+import { canAfford, spend } from './battery';
+import { UPGRADE_COST, UpgradeId, buyUpgrade, clearVase, placeSprig, upgradeStatus } from './home';
+import { pot, sow, trayStage, water } from './nursery';
+import { Tile } from './pathfind';
 import {
   Entity,
   GameState,
@@ -27,270 +32,326 @@ import {
   tileOccupied,
 } from './state';
 
-export type Target = { type: 'station'; station: Station } | { type: 'entity'; entity: Entity };
+export type Target =
+  | { type: 'entity'; entity: Entity }
+  | { type: 'station'; station: Station }
+  | { type: 'home'; item: HomeItem }
+  | { type: 'self'; spot: Tile | null };
 
 export type Verb =
-  | 'sleep'
-  | 'recycle'
-  | 'upgrade'
-  | 'dropoff'
-  | 'sow'
-  | 'water'
-  | 'pot'
   | 'scan'
   | 'remove'
   | 'collect'
+  | 'snip'
   | 'capture'
   | 'greet'
+  | 'info'
+  | 'enter'
+  | 'recycle'
+  | 'dropoff'
+  | 'sleep'
+  | 'sow'
+  | 'water'
+  | 'pot'
+  | 'arrange'
+  | 'clearVase'
+  | 'board'
+  | 'monitor'
+  | 'upgrade'
+  | 'exit'
   | 'plant'
-  | 'none';
+  | 'goHome';
 
 export interface Action {
   verb: Verb;
-  /** Short button label, e.g. "Pull". */
+  /** Emoji shown on the button. */
+  icon: string;
+  /** Texture key drawn on the button instead of / beside the emoji (species pictures). */
+  tex?: string;
+  /** Accessible name for screen readers and tooltips — never shown as in-game dialogue. */
   label: string;
-  /** What it applies to, e.g. "Cogon grass". */
-  detail: string;
   cost: number;
+  parts?: number;
   enabled: boolean;
-  /** Why it's disabled, shown as a hint. */
-  reason?: string;
-  target: Target | null;
-  spot?: { tx: number; ty: number };
+  /** Emoji explaining why it's disabled (🔋, 🎒, 🥀 …). */
+  block?: string;
+  blockTex?: string;
+  target: Target;
+  param?: string;
 }
 
 export type Fx = 'hit' | 'pop' | 'sparkle' | 'scan' | 'capture' | 'none';
+export type Mood = 'happy' | 'love' | 'sad' | 'surprise' | 'proud';
+
+export interface Gain {
+  icon: string;
+  tex?: string;
+  n: number;
+}
 
 export interface ActionResult {
   ok: boolean;
-  messages: string[];
-  /** Species whose field guide entry was just unlocked. */
-  scanned?: SpeciesId;
-  sleep?: boolean;
   fx: Fx;
   at?: { x: number; y: number };
+  mood?: Mood;
+  gains: Gain[];
+  scanned?: SpeciesId;
+  sleep?: boolean;
+  enter?: boolean;
+  exit?: boolean;
+  open?: 'monitor' | 'board' | 'guide';
+  guideId?: SpeciesId;
   rescued: NativePlantEntity[];
 }
+
+const VERB_ICON: Record<InvasivePlantId | HazardId, string> = {
+  cogon: ICON.pull,
+  natal: ICON.pull,
+  airpotato: ICON.pull,
+  pepper: ICON.cut,
+  tire: ICON.pickup,
+  bottle: ICON.pickup,
+  fence: ICON.pickup,
+  thicket: ICON.trim,
+};
 
 function speciesOf(e: Entity): SpeciesId | null {
   return e.kind === 'burrow' ? null : e.species;
 }
 
-function make(
-  verb: Verb,
-  label: string,
-  detail: string,
-  cost: number,
-  target: Target | null,
+function act(
   state: GameState,
+  target: Target,
+  verb: Verb,
+  icon: string,
+  label: string,
+  cost: number,
   extra: Partial<Action> = {},
 ): Action {
   const affordable = canAfford(state, cost);
   return {
     verb,
+    icon,
     label,
-    detail,
     cost,
     target,
     enabled: affordable,
-    reason: affordable ? undefined : 'Not enough battery — rest at the dock',
+    block: affordable ? undefined : ICON.battery,
     ...extra,
+    ...(extra.enabled === false ? {} : affordable ? {} : { enabled: false }),
   };
 }
 
-function disabled(label: string, detail: string, reason: string, target: Target | null): Action {
-  return { verb: 'none', label, detail, cost: 0, enabled: false, reason, target };
+function off(target: Target, verb: Verb, icon: string, label: string, block: string, extra: Partial<Action> = {}): Action {
+  return { verb, icon, label, cost: 0, enabled: false, block, target, ...extra };
 }
 
-function stationAction(state: GameState, station: Station): Action {
-  const target: Target = { type: 'station', station };
-  switch (station.kind) {
-    case 'dock':
-      return make('sleep', 'Sleep', 'Charging dock', 0, target, state);
-    case 'recycler':
-      if (state.bag > 0) return make('recycle', 'Recycle', `${state.bag} item${state.bag > 1 ? 's' : ''} → parts`, 0, target, state);
-      if (canUpgrade(state)) return make('upgrade', 'Upgrade', `Bigger battery (${BATTERY_UPGRADE_COST} parts)`, 0, target, state);
-      return disabled('Recycler', 'Recycler', 'Bring trash here to earn parts', target);
-    case 'pad':
-      if (state.crate || state.jar > 0) return make('dropoff', 'Drop off', 'Relocation pad', 0, target, state);
-      return disabled('Pad', 'Relocation pad', 'Crate invasive animals and bring them here', target);
-    case 'tray': {
-      const tray = state.trays[station.index ?? 0];
-      const stage = trayStage(tray);
-      if (stage === 'empty') {
-        const seed = nextSeed(state);
-        if (!seed) return disabled('Sow', 'Empty seed tray', 'Collect seeds from rescued native plants', target);
-        return make('sow', 'Sow', speciesName(seed), 1, target, state);
-      }
-      const name = speciesName(tray.seed as NativePlantId);
-      if (stage === 'ready') return make('pot', 'Pot up', `${name} seedling`, 0, target, state);
-      if (!tray.watered) return make('water', 'Water', `${name} tray`, 1, target, state);
-      return disabled('Growing', `${name} tray`, 'Watered! It will grow overnight', target);
-    }
-  }
-}
+// --- per-target action lists ---------------------------------------------------------
 
-function entityAction(state: GameState, e: Entity): Action {
-  const target: Target = { type: 'entity', entity: e };
+function entityActions(state: GameState, e: Entity, target: Target): Action[] {
   const species = speciesOf(e);
-  if (species && !state.scanned.includes(species)) {
-    return make('scan', 'Scan', '???', 1, target, state);
-  }
+  if (species && !state.scanned.includes(species)) return [act(state, target, 'scan', ICON.scan, 'Scan', 1)];
+  const info = species ? [act(state, target, 'info', ICON.info, 'Field guide', 0)] : [];
+
   switch (e.kind) {
     case 'invasivePlant': {
       const stats = INVASIVE_PLANTS[e.species];
-      if (stats.bulbils > 0 && state.bag >= BAG_CAPACITY) {
-        return disabled(stats.verb, speciesName(e.species), 'Bag full — recycle at base', target);
-      }
-      return make('remove', stats.verb, speciesName(e.species), stats.cost, target, state);
+      const full = stats.bulbils > 0 && state.bag >= BAG_CAPACITY;
+      const a = full
+        ? off(target, 'remove', VERB_ICON[e.species], stats.verb, ICON.bag)
+        : act(state, target, 'remove', VERB_ICON[e.species], stats.verb, stats.cost);
+      return [a, ...info];
     }
     case 'hazard': {
       const stats = HAZARDS[e.species];
-      if (stats.trash > 0 && state.bag >= BAG_CAPACITY) {
-        return disabled(stats.verb, speciesName(e.species), 'Bag full — recycle at base', target);
-      }
-      return make('remove', stats.verb, speciesName(e.species), stats.cost, target, state);
+      const full = stats.trash > 0 && state.bag >= BAG_CAPACITY;
+      const a = full
+        ? off(target, 'remove', VERB_ICON[e.species], stats.verb, ICON.bag)
+        : act(state, target, 'remove', VERB_ICON[e.species], stats.verb, stats.cost);
+      return [a, ...info];
     }
     case 'nativePlant': {
-      const name = speciesName(e.species);
-      if (isChoked(state, e)) return disabled('Choked', name, 'Clear the invasives around it first', target);
-      if (e.planted && state.day - e.plantedDay < 2) return disabled('Growing', name, 'Freshly planted — give it a couple of days', target);
-      if (e.lastSeedDay === state.day) return disabled('Collected', name, 'Already gave seeds today', target);
-      return make('collect', 'Collect', SEED_NOUN[e.species] + 's', 2, target, state);
+      const tex = e.species;
+      if (isChoked(state, e)) {
+        return [off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.sad, { tex }), ...info];
+      }
+      if (e.planted && state.day - e.plantedDay < 2) {
+        return [off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.wait, { tex }), ...info];
+      }
+      const seeds =
+        e.lastSeedDay === state.day
+          ? off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.done)
+          : act(state, target, 'collect', ICON.seeds, 'Collect seeds', 2);
+      const sprig =
+        (e.lastSprigDay ?? 0) === state.day
+          ? off(target, 'snip', ICON.sprig, 'Snip a sprig', ICON.done)
+          : act(state, target, 'snip', ICON.sprig, 'Snip a sprig', 1);
+      return [seeds, sprig, ...info];
     }
     case 'invasiveAnimal': {
-      const info = INVASIVE_ANIMALS[e.species];
-      const name = speciesName(e.species);
-      if (info.container === 'crate' && state.crate) {
-        return disabled('Crate full', name, 'Take your crate to the relocation pad', target);
-      }
-      if (info.container === 'jar' && state.jar >= JAR_CAPACITY) {
-        return disabled('Jar full', name, 'Empty your jar at the relocation pad', target);
-      }
-      return make('capture', info.container === 'crate' ? 'Crate' : 'Catch', name, info.cost, target, state);
+      const meta = INVASIVE_ANIMALS[e.species];
+      const icon = meta.container === 'crate' ? ICON.crate : ICON.jar;
+      const blocked =
+        meta.container === 'crate' ? state.crate !== null : state.jar >= JAR_CAPACITY;
+      const a = blocked
+        ? off(target, 'capture', icon, 'Capture', meta.container === 'crate' ? ICON.crate : ICON.jar)
+        : act(state, target, 'capture', icon, 'Capture', meta.cost);
+      return [a, ...info];
     }
     case 'nativeAnimal':
-      return make('greet', 'Say hi', speciesName(e.species), 0, target, state);
+      return [act(state, target, 'greet', ICON.greet, 'Say hi', 0), ...info];
     case 'burrow':
-      return disabled('Burrow', 'Tortoise burrow', 'A cozy home for lots of scrub critters', target);
+      return [];
   }
 }
 
-/** Natives grow best in their favourite part of the scrub. */
-const PREFERRED_ZONE: Record<NativePlantId, ZoneId> = {
-  palmetto: 'sand',
-  hickory: 'sand',
-  oak: 'oak',
-  rosemary: 'rosemary',
+function stationActions(state: GameState, st: Station, target: Target): Action[] {
+  switch (st.kind) {
+    case 'pod':
+      return [act(state, target, 'enter', ICON.enter, 'Go inside', 0)];
+    case 'recycler':
+      return state.bag > 0
+        ? [act(state, target, 'recycle', ICON.recycle, 'Recycle', 0)]
+        : [off(target, 'recycle', ICON.recycle, 'Recycle', ICON.bag)];
+    case 'pad':
+      return state.crate || state.jar > 0
+        ? [act(state, target, 'dropoff', ICON.dropoff, 'Drop off', 0)]
+        : [off(target, 'dropoff', ICON.dropoff, 'Drop off', ICON.crate)];
+  }
+}
+
+const UPGRADE_ICON: Record<UpgradeId, string> = {
+  battery: ICON.battery,
+  slots: ICON.slots,
+  vase: ICON.vase,
+  room: ICON.room,
 };
 
-export function seedlingFor(state: GameState, zone: ZoneId): NativePlantId | null {
-  const have = NATIVE_PLANTS.filter((p) => state.seedlings[p] > 0);
-  if (have.length === 0) return null;
-  return have.find((p) => PREFERRED_ZONE[p] === zone) ?? have[0];
+function homeActions(state: GameState, item: HomeItem, target: Target): Action[] {
+  switch (item.kind) {
+    case 'cradle':
+      return [act(state, target, 'sleep', ICON.sleep, 'Sleep', 0)];
+    case 'door':
+      return [act(state, target, 'exit', ICON.exit, 'Go outside', 0)];
+    case 'board':
+      return [act(state, target, 'board', ICON.board, 'Corkboard', 0)];
+    case 'monitor':
+      return [act(state, target, 'monitor', ICON.monitor, 'Wildlife monitor', 0)];
+    case 'window':
+      return [];
+    case 'bench':
+      return (['battery', 'slots', 'vase', 'room'] as UpgradeId[]).map((id) => {
+        const st = upgradeStatus(state, id);
+        const block = st.block === 'parts' ? ICON.parts : st.block === 'max' ? ICON.done : st.block === 'milestone' ? ICON.lock : undefined;
+        return {
+          verb: 'upgrade' as const,
+          icon: UPGRADE_ICON[id],
+          label: `Upgrade ${id}`,
+          cost: 0,
+          parts: UPGRADE_COST[id],
+          enabled: st.ok,
+          block,
+          blockTex: st.needs,
+          target,
+          param: id,
+        };
+      });
+    case 'slot': {
+      const i = item.index ?? 0;
+      const tray = state.trays[i];
+      const stage = trayStage(tray);
+      if (stage === 'empty') {
+        const have = NATIVE_PLANTS.filter((p) => state.seeds[p] > 0);
+        if (have.length === 0) return [off(target, 'sow', ICON.seeds, 'Sow', ICON.question)];
+        return have.map((p) => act(state, target, 'sow', ICON.seeds, `Sow ${speciesName(p)}`, 1, { tex: p, param: p }));
+      }
+      const tex = tray.seed ?? undefined;
+      if (stage === 'ready') return [act(state, target, 'pot', ICON.pot, 'Pot up', 0, { tex })];
+      if (!tray.watered) return [act(state, target, 'water', ICON.water, 'Water', 1, { tex })];
+      return [off(target, 'water', ICON.water, 'Water', ICON.wait, { tex })];
+    }
+    case 'vase': {
+      const i = item.index ?? 0;
+      const have = NATIVE_PLANTS.filter((p) => state.sprigs[p] > 0);
+      const out = have.map((p) => act(state, target, 'arrange', ICON.sprig, `Arrange ${speciesName(p)}`, 0, { tex: p, param: p }));
+      if ((state.vases[i]?.length ?? 0) > 0) out.push(act(state, target, 'clearVase', ICON.clear, 'Empty vase', 0));
+      if (out.length === 0) out.push(off(target, 'arrange', ICON.sprig, 'Arrange', ICON.question));
+      return out;
+    }
+  }
 }
 
 export function canPlantAt(state: GameState, tx: number, ty: number): boolean {
   return inBounds(tx, ty) && zoneAt(tx, ty) !== 'base' && !tileOccupied(state, tx, ty);
 }
 
-/** Resolve the context action for the nearest target, or for planting on the tile in front. */
-export function getAction(
-  state: GameState,
-  target: Target | null,
-  spot: { tx: number; ty: number } | null,
-): Action | null {
-  let action: Action | null = null;
-  if (target) action = target.type === 'station' ? stationAction(state, target.station) : entityAction(state, target.entity);
-
-  // Planting wins over a disabled hint so the robot isn't stuck next to e.g. a choked plant.
-  if ((!action || !action.enabled) && spot && canPlantAt(state, spot.tx, spot.ty)) {
-    const seedling = seedlingFor(state, zoneAt(spot.tx, spot.ty));
-    if (seedling) return make('plant', 'Plant', speciesName(seedling), 3, null, state, { spot });
+function selfActions(state: GameState, spot: Tile | null, target: Target): Action[] {
+  const out: Action[] = [];
+  const have = NATIVE_PLANTS.filter((p) => state.seedlings[p] > 0);
+  for (const p of have) {
+    const ok = !!spot && canPlantAt(state, spot.tx, spot.ty);
+    out.push(
+      ok
+        ? act(state, target, 'plant', ICON.plant, `Plant ${speciesName(p)}`, 3, { tex: p, param: p })
+        : off(target, 'plant', ICON.plant, `Plant ${speciesName(p)}`, ICON.bang, { tex: p, param: p }),
+    );
   }
-  return action;
+  if (state.location === 'outside') out.push(act(state, target, 'goHome', ICON.home, 'Go home', 0));
+  return out;
 }
+
+export function getActions(state: GameState, target: Target): Action[] {
+  switch (target.type) {
+    case 'entity':
+      return entityActions(state, target.entity, target);
+    case 'station':
+      return stationActions(state, target.station, target);
+    case 'home':
+      return homeActions(state, target.item, target);
+    case 'self':
+      return selfActions(state, target.spot, target);
+  }
+}
+
+// --- doing it ------------------------------------------------------------------------
 
 function result(partial: Partial<ActionResult>): ActionResult {
-  return { ok: true, messages: [], fx: 'none', rescued: [], ...partial };
+  return { ok: true, fx: 'none', gains: [], rescued: [], ...partial };
 }
 
-export function performAction(state: GameState, action: Action): ActionResult {
-  if (!action.enabled) return result({ ok: false, messages: action.reason ? [action.reason] : [] });
-  if (!spend(state, action.cost)) return result({ ok: false, messages: ['Not enough battery — rest at the dock'] });
+function targetPos(t: Target): { x: number; y: number } | undefined {
+  switch (t.type) {
+    case 'entity':
+      return 'tx' in t.entity ? tileCenter(t.entity.tx, t.entity.ty) : { x: t.entity.x, y: t.entity.y };
+    case 'station':
+      return tileCenter(t.station.tx, t.station.ty);
+    case 'self':
+      return t.spot ? tileCenter(t.spot.tx, t.spot.ty) : undefined;
+    case 'home':
+      return undefined;
+  }
+}
 
-  const target = action.target;
-  const entity = target?.type === 'entity' ? target.entity : null;
-  const station = target?.type === 'station' ? target.station : null;
-  const at = entity
-    ? 'tx' in entity
-      ? tileCenter(entity.tx, entity.ty)
-      : { x: entity.x, y: entity.y }
-    : station
-      ? tileCenter(station.tx, station.ty)
-      : action.spot
-        ? tileCenter(action.spot.tx, action.spot.ty)
-        : undefined;
+export function performAction(state: GameState, a: Action): ActionResult {
+  if (!a.enabled) return result({ ok: false, mood: 'sad' });
+  if (!spend(state, a.cost)) return result({ ok: false, mood: 'sad' });
 
-  switch (action.verb) {
-    case 'sleep':
-      return result({ sleep: true, at });
+  const t = a.target;
+  const entity = t.type === 'entity' ? t.entity : null;
+  const item = t.type === 'home' ? t.item : null;
+  const at = targetPos(t);
 
-    case 'recycle': {
-      const n = state.bag;
-      state.parts += n;
-      state.bag = 0;
-      const hint = canUpgrade(state) ? ' You can upgrade your battery now!' : '';
-      return result({ messages: [`Recycled ${n} item${n > 1 ? 's' : ''} into ${n} part${n > 1 ? 's' : ''}.${hint}`], fx: 'sparkle', at });
-    }
-
-    case 'upgrade':
-      upgrade(state);
-      return result({ messages: [`Battery upgraded! Max charge is now ${state.batteryMax}.`], fx: 'sparkle', at });
-
-    case 'dropoff': {
-      const msgs: string[] = [];
-      if (state.crate) {
-        state.pad.push(state.crate);
-        msgs.push(
-          state.crate.species === 'cat'
-            ? `${state.crate.name} the cat is snug on the pad. The shelter van comes tonight.`
-            : `${speciesName(state.crate.species)} dropped off. Wildlife officers will pick it up tonight.`,
-        );
-        state.crate = null;
-      }
-      if (state.jar > 0) {
-        state.padAnoles += state.jar;
-        msgs.push(`${state.jar} anole${state.jar > 1 ? 's' : ''} dropped off for pickup.`);
-        state.jar = 0;
-      }
-      return result({ messages: msgs, fx: 'pop', at });
-    }
-
-    case 'sow': {
-      const seed = sow(state, station?.index ?? 0);
-      return result({ ok: !!seed, messages: seed ? [`Sowed ${speciesName(seed).toLowerCase()} seeds. Don't forget to water!`] : [], fx: 'pop', at });
-    }
-
-    case 'water':
-      water(state, station?.index ?? 0);
-      return result({ messages: ['Watered! The seeds will grow overnight.'], fx: 'sparkle', at });
-
-    case 'pot': {
-      const species = pot(state, station?.index ?? 0);
-      return result({
-        messages: species ? [`Potted a ${speciesName(species).toLowerCase()} seedling. Plant it out in a cleared spot!`] : [],
-        fx: 'pop',
-        at,
-      });
-    }
-
+  switch (a.verb) {
     case 'scan': {
       const species = entity ? speciesOf(entity) : null;
       if (!species) return result({ ok: false });
       state.scanned.push(species);
-      const entry = GUIDE_BY_ID[species];
-      return result({ scanned: species, messages: [`New field guide entry: ${entry.name}!`], fx: 'scan', at });
+      return result({ scanned: species, fx: 'scan', at, mood: 'surprise' });
+    }
+
+    case 'info': {
+      const species = entity ? speciesOf(entity) : null;
+      return result({ open: 'guide', guideId: species ?? undefined });
     }
 
     case 'remove': {
@@ -298,38 +359,39 @@ export function performAction(state: GameState, action: Action): ActionResult {
       entity.hp--;
       if (entity.hp > 0) return result({ fx: 'hit', at });
       removeEntity(state, entity.id);
-      const msgs: string[] = [];
+      const gains: Gain[] = [];
       if (entity.kind === 'invasivePlant') {
         state.stats.invasivesRemoved++;
         const bulbils = INVASIVE_PLANTS[entity.species].bulbils;
         if (bulbils > 0) {
           state.bag = Math.min(BAG_CAPACITY, state.bag + bulbils);
-          msgs.push('Bagged the bulbils so they can’t sprout.');
+          gains.push({ icon: ICON.bag, n: bulbils });
         }
       } else {
         const trash = HAZARDS[entity.species].trash;
         if (trash > 0) {
           state.bag = Math.min(BAG_CAPACITY, state.bag + trash);
           state.stats.trashCollected += trash;
-          if (state.bag >= BAG_CAPACITY) msgs.push('Bag full! Take it to the recycler.');
+          gains.push({ icon: ICON.bag, n: trash });
         }
       }
       const rescued = refreshRescues(state);
-      for (const r of rescued) msgs.push(`Rescued a ${speciesName(r.species).toLowerCase()}! It can make seeds now.`);
-      return result({ messages: msgs, fx: 'pop', at, rescued });
+      return result({ fx: 'pop', at, gains, rescued, mood: rescued.length ? 'love' : 'happy' });
     }
 
     case 'collect': {
       if (entity?.kind !== 'nativePlant') return result({ ok: false });
       const n = SEED_YIELD[entity.species];
       state.seeds[entity.species] += n;
-      state.selectedSeed = entity.species;
       entity.lastSeedDay = state.day;
-      return result({
-        messages: [`Collected ${n} ${SEED_NOUN[entity.species]}${n > 1 ? 's' : ''}. Sow them in a nursery tray at base.`],
-        fx: 'sparkle',
-        at,
-      });
+      return result({ fx: 'sparkle', at, gains: [{ icon: ICON.seeds, tex: entity.species, n }], mood: 'happy' });
+    }
+
+    case 'snip': {
+      if (entity?.kind !== 'nativePlant') return result({ ok: false });
+      state.sprigs[entity.species]++;
+      entity.lastSprigDay = state.day;
+      return result({ fx: 'sparkle', at, gains: [{ icon: ICON.sprig, tex: entity.species, n: 1 }], mood: 'love' });
     }
 
     case 'capture': {
@@ -337,28 +399,91 @@ export function performAction(state: GameState, action: Action): ActionResult {
       removeEntity(state, entity.id);
       if (INVASIVE_ANIMALS[entity.species].container === 'jar') {
         state.jar++;
-        return result({ messages: ['Gently caught an anole in your jar.'], fx: 'capture', at });
+        return result({ fx: 'capture', at, gains: [{ icon: ICON.jar, tex: 'anole', n: 1 }], mood: 'happy' });
       }
       const name = entity.species === 'cat' ? CAT_NAMES[state.catNameIndex++ % CAT_NAMES.length] : undefined;
       state.crate = { species: entity.species, name };
-      const msg =
-        entity.species === 'cat'
-          ? `Coaxed a cat into the crate with a treat. Let's call them ${name}. Off to the pad!`
-          : `${speciesName(entity.species)} safely crated. Bring it to the relocation pad.`;
-      return result({ messages: [msg], fx: 'capture', at });
+      return result({ fx: 'capture', at, gains: [{ icon: ICON.crate, tex: entity.species, n: 1 }], mood: 'happy' });
     }
 
     case 'greet': {
       if (entity?.kind !== 'nativeAnimal') return result({ ok: false });
-      const facts = GUIDE_BY_ID[entity.species].facts;
-      return result({ messages: [facts[(state.day + entity.id) % facts.length]], fx: 'sparkle', at });
+      return result({ fx: 'sparkle', at, mood: 'love' });
+    }
+
+    case 'enter':
+      state.location = 'home';
+      return result({ enter: true });
+
+    case 'exit':
+      state.location = 'outside';
+      return result({ exit: true });
+
+    case 'recycle': {
+      const n = state.bag;
+      state.parts += n;
+      state.bag = 0;
+      return result({ fx: 'sparkle', at, gains: [{ icon: ICON.parts, n }], mood: 'proud' });
+    }
+
+    case 'dropoff': {
+      const gains: Gain[] = [];
+      if (state.crate) {
+        state.pad.push(state.crate);
+        gains.push({ icon: ICON.truck, tex: state.crate.species, n: 1 });
+        state.crate = null;
+      }
+      if (state.jar > 0) {
+        state.padAnoles += state.jar;
+        gains.push({ icon: ICON.truck, tex: 'anole', n: state.jar });
+        state.jar = 0;
+      }
+      return result({ fx: 'pop', at, gains, mood: 'proud' });
+    }
+
+    case 'sleep':
+      return result({ sleep: true });
+
+    case 'sow': {
+      const ok = !!sow(state, item?.index ?? 0, a.param as NativePlantId);
+      return result({ ok, fx: 'pop', mood: 'happy' });
+    }
+
+    case 'water':
+      water(state, item?.index ?? 0);
+      return result({ fx: 'sparkle', mood: 'happy' });
+
+    case 'pot': {
+      const species = pot(state, item?.index ?? 0);
+      return result({
+        ok: !!species,
+        fx: 'pop',
+        gains: species ? [{ icon: ICON.plant, tex: species, n: 1 }] : [],
+        mood: 'love',
+      });
+    }
+
+    case 'arrange':
+      return result({ ok: placeSprig(state, item?.index ?? 0, a.param as NativePlantId), fx: 'sparkle', mood: 'love' });
+
+    case 'clearVase':
+      return result({ ok: clearVase(state, item?.index ?? 0), fx: 'pop' });
+
+    case 'board':
+      return result({ open: 'board' });
+
+    case 'monitor':
+      return result({ open: 'monitor' });
+
+    case 'upgrade': {
+      const ok = buyUpgrade(state, a.param as UpgradeId);
+      return result({ ok, fx: 'sparkle', mood: ok ? 'proud' : 'sad' });
     }
 
     case 'plant': {
-      const spot = action.spot;
-      if (!spot) return result({ ok: false });
-      const species = seedlingFor(state, zoneAt(spot.tx, spot.ty));
-      if (!species) return result({ ok: false });
+      const spot = t.type === 'self' ? t.spot : null;
+      const species = a.param as NativePlantId;
+      if (!spot || !canPlantAt(state, spot.tx, spot.ty) || state.seedlings[species] <= 0) return result({ ok: false, mood: 'sad' });
       state.seedlings[species]--;
       addEntity<NativePlantEntity>(state, {
         kind: 'nativePlant',
@@ -371,10 +496,10 @@ export function performAction(state: GameState, action: Action): ActionResult {
         rescued: true,
       });
       state.stats.planted++;
-      return result({ messages: [`Planted a ${speciesName(species).toLowerCase()}. Welcome home, little one!`], fx: 'sparkle', at });
+      return result({ fx: 'sparkle', at, mood: 'love' });
     }
 
-    case 'none':
-      return result({ ok: false });
+    case 'goHome':
+      return result({});
   }
 }

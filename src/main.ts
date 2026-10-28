@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import './style.css';
 import { BootScene } from './scenes/BootScene';
+import { HomeScene } from './scenes/HomeScene';
+import { IntroScene } from './scenes/IntroScene';
+import type { PlayScene } from './scenes/PlayScene';
 import { WorldScene } from './scenes/WorldScene';
 import { services } from './services';
 import { Hud } from './ui/hud';
@@ -26,17 +29,18 @@ const game = new Phaser.Game({
     zoom: 1 / dpr,
   },
   physics: { default: 'arcade', arcade: { debug: false } },
-  input: { keyboard: false, mouse: false, touch: false },
+  input: { keyboard: false, mouse: true, touch: true, activePointers: 2 },
   render: { antialias: true, roundPixels: false },
-  scene: [BootScene, WorldScene],
+  scene: [BootScene, IntroScene, WorldScene, HomeScene],
 });
 game.registry.set('dpr', dpr);
 
-const world = () => game.scene.getScene('World') as WorldScene;
+/** Whichever play space (outdoors or the pod) is running. */
+const active = (): PlayScene | null =>
+  (['World', 'Home'] as const).map((k) => game.scene.getScene(k) as PlayScene).find((s) => s?.scene.isActive()) ?? null;
 services.hud = new Hud(document.getElementById('ui')!, {
-  onGuide: () => void world().openGuide(),
-  onCycleSeed: () => world().cycleSeed(),
-  onMenu: () => void world().openMenu(),
+  onGuide: () => void active()?.openGuide(),
+  onMenu: () => void active()?.openPause(),
 });
 services.hud.setVisible(false);
 initKeyboard();

@@ -1,7 +1,7 @@
 // Seed trays at home base: sow → (water each day) → sprout → seedling → pot up.
 import { GROW_NIGHTS } from '../config';
 import { NativePlantId } from '../data/species';
-import { GameState, NATIVE_PLANTS, TrayState } from './state';
+import { GameState, TrayState } from './state';
 
 export type TrayStage = 'empty' | 'sown' | 'sprout' | 'ready';
 
@@ -11,23 +11,9 @@ export function trayStage(tray: TrayState): TrayStage {
   return tray.growth === 0 ? 'sown' : 'sprout';
 }
 
-/** The seed the robot will sow next: the selected one if available, else any it has. */
-export function nextSeed(state: GameState): NativePlantId | null {
-  if (state.seeds[state.selectedSeed] > 0) return state.selectedSeed;
-  return NATIVE_PLANTS.find((p) => state.seeds[p] > 0) ?? null;
-}
-
-export function cycleSelectedSeed(state: GameState): void {
-  const available = NATIVE_PLANTS.filter((p) => state.seeds[p] > 0);
-  if (available.length === 0) return;
-  const i = available.indexOf(state.selectedSeed);
-  state.selectedSeed = available[(i + 1) % available.length];
-}
-
-export function sow(state: GameState, index: number): NativePlantId | null {
+export function sow(state: GameState, index: number, seed: NativePlantId): NativePlantId | null {
   const tray = state.trays[index];
-  const seed = nextSeed(state);
-  if (!tray || tray.seed || !seed) return null;
+  if (!tray || tray.seed || state.seeds[seed] <= 0) return null;
   state.seeds[seed]--;
   tray.seed = seed;
   tray.growth = 0;

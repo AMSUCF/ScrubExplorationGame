@@ -1,63 +1,95 @@
-# Scrub Bot — Game Design (MVP)
+# Scrub Bot — Game Design
 
 ## Pitch
-You are a little Wall-E-like robot waking up in an abandoned Florida scrub. You can't fix it all at once, but day by day you clear what doesn't belong, grow back what does, and learn about each plant and animal along the way. The game is cozy, has no failure state, and is suitable for all ages.
+A small, round robot drops by pod into a neglected patch of Florida scrub to be its new caretaker. With no words, only curiosity, the robot works out what doesn't belong, grows back what does, and turns its landed pod into a cozy home full of seedlings, sprigs and keepsakes. Meanwhile, the wildlife slowly comes back. The game is cozy, has no failure state, and is suitable for all ages.
 
 ## Pillars
-- **Cozy, never punishing.** No death and no timers that hurt you. An empty battery just slows you down until you're home.
-- **Learning through doing.** The first time you meet anything, you scan it, and it becomes a field guide card with short, true facts.
-- **Ecology as mechanics.** Wildlife returns because of real relationships: the tortoise needs an open, unfenced sandy area; mice live in tortoise burrows; jays need low oaks and no cats; indigo snakes need burrows and no tegus.
-- **Gentle stewardship.** Invasive animals are crated and relocated humanely, never harmed. Cats get adopted.
+- **Wordless.** Everything is told through pictures, icons, animation and the robot's reactions, with one exception: the field guide is the robot's reference book and keeps short written facts.
+- **Learning through doing.** The first time you meet anything, you scan it, and the field guide fills in.
+- **Ecology as mechanics.** Wildlife arrives, grows and dips according to real relationships: tortoises need open, unfenced sand; mice live in tortoise burrows; jays need low oaks and no cats; indigo snakes need burrows and no tegus.
+- **Gentle stewardship.** Invasive animals are crated and relocated, never harmed. Cats get adopted.
+- **A home that grows with you.** In the spirit of Wall-E's collection and Animal Crossing's house, the pod fills up with things you've grown and found, and it expands as the scrub recovers.
+
+## Look
+- **Robot.** Inspired by Hugging Face's Reachy Mini and pushed toward Sanrio:
+  - a big round cream head with a dark face plate and two glossy lens eyes;
+  - springy antennas tipped with peach balls, blush cheeks, a little mint body and tiny treads.
+  - It blinks, squints happily, droops its antennas when sad, and emotes in icon bubbles.
+- **Pod.** A cream capsule with mint stripes, portholes and an antenna. With each room expansion it gains a greenhouse dome, then a solar canopy and flower box.
+- **Palette.** Sun-bleached sand, soft greens and warm pastels. All art is placeholder canvas drawing in `src/art/`, keyed so that real sprites can replace it.
+
+## Controls
+- **Tap or click the ground** to drive there (A* pathfinding). Hold and drag to steer directly.
+- **Tap or click a thing** to open a radial ring of icon actions. Each button shows its battery or parts cost. A disabled button has a small badge showing why: 🔋 low battery, 🎒 bag full, 🥀 choked, ⏳ growing, ✔️ done for today, 🔒 plus the species that unlocks it. Picking an action drives the robot over and does it. The ring stays open for repeat taps.
+- **Tap the robot** for its own menu: plant a seedling on the tile ahead, or go home.
+- **Desktop extras:** hover highlights, WASD/arrows, Space/E to open the nearest ring, 1–9 to pick, Esc, and G for the guide.
 
 ## Core loop (one day = one battery)
-Wake → explore & restore → rescue natives & collect seeds → sow/water at the nursery → plant out → recycle & drop off → sleep → overnight results (morning card).
+Wake in the cradle → tend hydroponics → head out → scan, clear, rescue, collect seeds and sprigs, crate invaders → recycle and drop off → come home, arrange vases, check the monitor and spend parts → sleep → the picture-only morning card.
 
 ## Systems
 
-| System | Rules (tuning lives in `src/config.ts`) |
+| System | Rules (tuning in `src/config.ts`, `src/systems/home.ts`, `src/systems/population.ts`) |
 | --- | --- |
-| Battery | Starts at 100. Actions cost 1–5 and driving drains slowly. At 0 the robot crawls at low speed. Recycling 4 parts gives +25 max battery, up to 3 times. |
-| Scanning | The first interaction with any unscanned species is a Scan (1 🔋) that unlocks its field guide card. |
-| Invasive plants | Cogon (pull; **spreads nightly**), Brazilian pepper (cut ×3, blocks movement), air potato (pull; its bulbils go in your bag), natal grass (pull). |
+| Battery | Starts at 100. Actions cost 1–5 and driving drains slowly. At 0 the robot crawls. |
+| Scanning | The first interaction with any unscanned species is a Scan (🔍, 1 🔋). |
+| Invasive plants | Cogon (pull; **spreads nightly**, up to 4 new patches), Brazilian pepper (cut ×3, blocks movement), air potato (pull; its bulbils go in the bag), natal grass (pull). |
 | Hazards | Tires and bottles go in the bag (6 slots). Fences (×2) block movement and keep tortoises out. Overgrown thickets (trim ×2) stand in for missing fire. |
-| Natives | A native is *choked* while any invasive is within 2 tiles. Once freed, it is *rescued*, and every day it gives seeds: palmetto berries, rosemary seeds, acorns, or hickory nuts. |
-| Nursery | 4 trays. Sow → water daily → after 2 watered nights → pot up a seedling. Unwatered trays don't grow. |
-| Planting | With a seedling in hand, face an empty, non-base tile and press Plant. Seedlings go to their favourite zone first. A planted native boosts zone health. |
-| Invasive animals | Feral cat, Argentine tegu and green iguana go in the crate (one at a time; it slows you down). Brown anoles go in a jar (5 slots). Drop them off at the pad; they're picked up overnight and you receive postcards. |
+| Native plants | *Choked* while any invasive is within 2 tiles. Once freed, each gives seeds (🌰) and a sprig (💐) once per day. |
+| Hydroponics | Starts with 4 jars. Sow (pick the species) → top up water daily → 2 watered nights → pot up a seedling. |
+| Planting | From the robot's own menu, on the empty tile ahead (not at base). Planted natives boost zone health. |
+| Invasive animals | Cats, tegus and iguanas go in the crate (one at a time; it slows you down). Brown anoles go in the jar (5 slots). Drop them at the pad for overnight pickup, and postcards arrive. |
 | Zone health | `good / (good + bad)`. Natives, burrows and wildlife count as good. Invasives, hazards and invasive animals count as bad. |
-| Night | Pickups → nursery growth → cogon spreads (≤4 new patches) → tortoise digs burrows → return checks → recharge → save. |
+| Populations | See **Wildlife** below. |
+| Sightings | Driving near a native animal logs one sighting per species per day. The first ever sighting pins a photo to the corkboard. |
+| Home upgrades (workbench) | 🔋 +25 battery (4 ⚙️, ×3); 🌱 +2 jars (3 ⚙️); 🏺 +1 vase (2 ⚙️); 🏡 room expansion (6 ⚙️). Expansion 1 needs the tortoise and expansion 2 needs the scrub-jay. Jars and vases are capped by room size. |
+| Night | Pad pickups → hydroponics → cogon spreads → tortoises dig burrows → populations update → recharge → save. |
 
-### Wildlife return conditions
-| Species | Condition |
-| --- | --- |
-| Gopher tortoise | Sand Scrub health ≥ 65% and no fences left. It digs a burrow, and later more (up to 3). |
-| Florida mouse | The tortoise is back and a burrow exists. It arrives the next night. |
-| Eastern indigo snake | 2+ burrows and no tegus on the map. |
-| Florida scrub-jay | Oak Scrub health ≥ 60%, 6+ healthy oaks (more than the map starts with, so you must plant some), no thickets in the Oak Scrub, and no feral cats. |
+### Wildlife
+| Species | Arrives when | Grows toward | Thought-bubble worries |
+| --- | --- | --- | --- |
+| Gopher tortoise | Sand Scrub ≥ 65% and no fences there | Up to 6, rising with Sand Scrub health | Fence, the worst problem in the Sand Scrub, tegus |
+| Florida mouse | A night after the first burrow | 2 per burrow | Burrows, cats |
+| Eastern indigo snake | 2+ burrows and no tegus | 1 per 2 burrows | Burrows, tegus |
+| Florida scrub-jay | Oak Scrub ≥ 60%, 6+ healthy oaks (so you must plant some), no thickets in the Oak Scrub, no cats | 1 family per 3 oaks | The worst problem in the Oak Scrub, oaks, thickets, cats |
 
-The game is "won" when all four have returned. Play continues afterward.
+Each night, a species' population grows by 1 if all its needs are met and it's below what the habitat can support. It drops by 1 if any need is unmet, but never below 1. The wildlife monitor graphs populations over time and pictures each species' unmet needs. Before a species arrives, the monitor and the guide show its arrival needs as hints. The scrub counts as restored when all four species are home; play continues afterward.
 
-## Map
-The map is 56×44 tiles of 32 px. Home Base sits in a clearing at the bottom-middle and holds the charging dock, recycler, relocation pad and 4 nursery trays. Around it are three zones with organic borders:
-- **Sand Scrub** (west): cogon, natal grass, an old fence line, palmettos and hickories.
-- **Oak Scrub** (north): pepper, air potato, thickets and oaks.
-- **Rosemary Bald** (east): white sand, natal grass and Florida rosemary.
+## Home (pod interior)
+| Level | Room | Max jars / vases | Unlocked by |
+| --- | --- | --- | --- |
+| 0 | 12×8 | 6 / 2 | — |
+| 1 | 15×9, with a window | 8 / 3 | Tortoise |
+| 2 | 18×10 | 10 / 4 | Scrub-jay |
 
-## Controls
-- **Touch:** a floating joystick (drag anywhere) plus one large context button. The button's label always says what it will do, and a hint explains why when it can't.
-- **Keyboard:** WASD/arrows, Space/E, and G for the guide.
+The room holds:
+- **Charging cradle** for sleeping.
+- **Wildlife monitor**: a green-screen display of populations, trends, needs, sightings, zone health and totals.
+- **Corkboard**: photos and postcards, also pinned in miniature on the board itself.
+- **Collection shelf**: little figures of every species that has come home.
+- **Vases** of arranged sprigs (3 each).
+- **Workbench** for upgrades.
+- **Door** back outside.
+
+## Opening
+A wordless intro (skippable with ⏭):
+1. Night sky, then a pod streaks down trailing fire.
+2. It thumps into the sand in a puff of dust, and the door pops open.
+3. The robot rolls out, looks left and right, and wonders ❓.
+4. The camera glances at a smothered plant 🥀 nearby.
+5. The robot perks up ❗💗, and morning begins.
 
 ## Tech
 - Phaser 3 and TypeScript, built with Vite.
-- Game logic is in pure TS (`src/systems`) and unit-tested, including a scripted full playthrough.
-- The HUD and cards are DOM, which keeps text crisp and buttons accessible.
-- Rendering is at device pixel ratio (capped at 2×), and all art is generated at 2×.
-- Saves go to localStorage and are versioned, with a migration hook.
+- Game logic is pure TS in `src/systems` and unit-tested, including a scripted full playthrough.
+- The HUD, radial menu and cards are DOM, so they stay crisp and accessible (aria labels on icon buttons).
+- Rendering is at device pixel ratio (capped at 2×), with art generated at 2×.
+- Saves go to localStorage and are versioned with migrations (v1 → v2 adds the home, populations and collections).
 
-## Next up (post-MVP)
-- Wild Robot-inspired painted art, animation, ambient audio and music.
-- A **prescribed burn** mechanic: schedule safe burns that renew the scrub, which replaces trimming thickets.
-- More zones (pond edge, flatwoods), seasons, and weather.
-- Native wildflowers and pollinators; scrub lizards and the native green anole returning once the brown anoles are gone.
-- An NPC ranger or companion, plus collectible postcards in an album.
+## Next up
+- Real painted art in the Wild Robot spirit, animation, ambient audio and music.
+- A **prescribed burn** mechanic to replace trimming thickets.
+- More zones (pond edge, flatwoods), seasons and weather.
+- Native wildflowers and pollinators; scrub lizards and native green anoles returning.
+- More collectibles for the shelf (found trinkets) and decorations from milestones.
 - Installable PWA with offline play.

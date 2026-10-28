@@ -1,9 +1,15 @@
 import Phaser from 'phaser';
 import { generateTextures } from '../art/placeholders';
-import { loadGame } from '../systems/save';
-import { newGame } from '../systems/state';
-import { showTitle } from '../ui/overlays';
 import { services } from '../services';
+import { loadGame } from '../systems/save';
+import { GameState, newGame } from '../systems/state';
+import { showTitle } from '../ui/overlays';
+
+export function startGame(scene: Phaser.Scene, state: GameState): void {
+  if (!state.introSeen) scene.scene.start('Intro', { state });
+  else if (state.location === 'home') scene.scene.start('Home', { state, spawn: 'cradle' });
+  else scene.scene.start('World', { state });
+}
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -23,8 +29,7 @@ export class BootScene extends Phaser.Scene {
     };
 
     const saved = loadGame();
-    const choice = await showTitle(!!saved, services.icon);
-    const state = choice === 'continue' && saved ? saved : newGame();
-    this.scene.start('World', { state, fresh: choice === 'new' });
+    const choice = await showTitle(!!saved);
+    startGame(this, choice === 'continue' && saved ? saved : newGame());
   }
 }

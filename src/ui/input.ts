@@ -1,10 +1,19 @@
-// Merges the touch joystick and keyboard into one movement vector + action presses.
+// Keyboard input (desktop). Touch and mouse go through Phaser's pointer events in the scenes.
 
 const keys = new Set<string>();
-const stick = { x: 0, y: 0 };
-let actionHandler: (() => void) | null = null;
-let guideHandler: (() => void) | null = null;
 let enabled = true;
+
+export interface KeyHandlers {
+  /** Space / E: open the menu for whatever is nearby. */
+  interact(): void;
+  /** 1–9: pick an option in the open radial menu. */
+  choose(index: number): void;
+  /** Escape: close the radial menu. */
+  cancel(): void;
+  guide(): void;
+}
+
+let handlers: KeyHandlers | null = null;
 
 const MOVE_KEYS: Record<string, [number, number]> = {
   ArrowUp: [0, -1],
@@ -23,54 +32,44 @@ export function initKeyboard(): void {
     if (MOVE_KEYS[e.code]) {
       keys.add(e.code);
       e.preventDefault();
-    } else if ((e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter') && !e.repeat) {
-      // Let Enter/Space activate focused overlay buttons instead.
-      if (document.activeElement instanceof HTMLButtonElement && document.activeElement.closest('.overlay')) return;
+      return;
+    }
+    if (e.repeat || !enabled || !handlers) return;
+    if (e.code === 'Space' || e.code === 'KeyE' || e.code === 'Enter') {
+      if (document.activeElement instanceof HTMLButtonElement) return;
       e.preventDefault();
-      if (enabled) actionHandler?.();
-    } else if (e.code === 'KeyG' && !e.repeat) {
-      guideHandler?.();
+      handlers.interact();
+    } else if (/^Digit[1-9]$/.test(e.code)) {
+      handlers.choose(Number(e.code.slice(5)) - 1);
+    } else if (e.code === 'Escape') {
+      handlers.cancel();
+    } else if (e.code === 'KeyG') {
+      handlers.guide();
     }
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
 }
 
-export function setStick(x: number, y: number): void {
-  stick.x = x;
-  stick.y = y;
-}
-
-export function onAction(fn: () => void): void {
-  actionHandler = fn;
-}
-
-export function onGuideKey(fn: () => void): void {
-  guideHandler = fn;
-}
-
-export function triggerAction(): void {
-  if (enabled) actionHandler?.();
+export function setKeyHandlers(h: KeyHandlers | null): void {
+  handlers = h;
 }
 
 /** Freeze movement and actions while an overlay (guide, summary) is open. */
 export function setInputEnabled(on: boolean): void {
   enabled = on;
-  if (!on) {
-    keys.clear();
-    stick.x = stick.y = 0;
-  }
+  if (!on) keys.clear();
 }
 
 export function isInputEnabled(): boolean {
   return enabled;
 }
 
-/** Movement vector with length 0..1. */
-export function moveVector(): { x: number; y: number } {
+/** Keyboard movement vector with length 0..1. */
+export function keyVector(): { x: number; y: number } {
   if (!enabled) return { x: 0, y: 0 };
-  let x = stick.x;
-  let y = stick.y;
+  let x = 0;
+  let y = 0;
   for (const k of keys) {
     const d = MOVE_KEYS[k];
     if (d) {
@@ -79,9 +78,5 @@ export function moveVector(): { x: number; y: number } {
     }
   }
   const len = Math.hypot(x, y);
-  if (len > 1) {
-    x /= len;
-    y /= len;
-  }
-  return { x, y };
+  return len > 1 ? { x: x / len, y: y / len } : { x, y };
 }

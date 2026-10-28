@@ -56,41 +56,6 @@ export function healthyOaks(state: GameState, zone: ZoneId): number {
   );
 }
 
-export interface ReturnCondition {
-  species: NativeAnimalId;
-  met(state: GameState): boolean;
-}
-
-/** Evaluated in order each night; each species also needs any earlier links in its chain. */
-export const RETURN_CONDITIONS: ReturnCondition[] = [
-  {
-    // Mouse is checked before tortoise so it arrives the night *after* the first burrow appears.
-    species: 'mouse',
-    met: (s) => s.returned.includes('tortoise') && burrowCount(s) >= 1,
-  },
-  {
-    species: 'indigo',
-    met: (s) =>
-      s.returned.includes('tortoise') &&
-      burrowCount(s) >= 2 &&
-      countWhere(s, (e) => e.kind === 'invasiveAnimal' && e.species === 'tegu') === 0,
-  },
-  {
-    species: 'tortoise',
-    met: (s) =>
-      zoneHealth(s, 'sand') >= 65 &&
-      countWhere(s, (e) => e.kind === 'hazard' && e.species === 'fence' && entityZone(e) === 'sand') === 0,
-  },
-  {
-    species: 'jay',
-    met: (s) =>
-      zoneHealth(s, 'oak') >= 60 &&
-      healthyOaks(s, 'oak') >= JAY_OAKS &&
-      countWhere(s, (e) => e.kind === 'invasiveAnimal' && e.species === 'cat') === 0 &&
-      countWhere(s, (e) => e.kind === 'hazard' && e.species === 'thicket' && entityZone(e) === 'oak') === 0,
-  },
-];
-
 export const ANIMAL_HOME: Record<NativeAnimalId, ZoneId> = {
   tortoise: 'sand',
   mouse: 'sand',

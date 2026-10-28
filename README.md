@@ -1,26 +1,39 @@
 # Scrub Bot 🤖🌱
 
-A cozy, mobile-friendly, top-down game: you play a small, rusty robot in an abandoned patch of Florida scrub. Your job is to clear the invasive plants and trash, and to gently relocate the invasive animals. You also rescue native plants, grow their seeds at your home-base nursery, and plant them back out, until gopher tortoises, Florida mice, scrub-jays and indigo snakes come home.
+A cozy, wordless, mobile-friendly, top-down game: you play a small, round robot in an abandoned patch of Florida scrub. Your job is to clear the invasive plants and trash, and to gently relocate the invasive animals. You also rescue native plants, grow their seeds at your home-base nursery, and plant them back out, until gopher tortoises, Florida mice, scrub-jays and indigo snakes come home.
 
 Inspired by Animal Crossing, cozy games, and *The Wild Robot*. The art is a set of placeholders drawn in code, which will be replaced later.
 
 ## Play
 
-- **Phone:** drag anywhere on the screen to drive, and tap the big round button to do whatever is nearby.
-- **Desktop:** WASD or the arrow keys drive, Space/E acts, and G opens the field guide.
+The game has no words: everything is told through pictures, icons, and the robot's little reactions. The field guide is the one exception. It's the robot's reference book and keeps its written facts.
+
+- **Tap the ground** (or click it) to drive there. Hold and drag to steer.
+- **Tap anything** to open its ring of icon actions. The robot drives over and does it. The ring stays open, so you can keep tapping, e.g. to cut pepper three times.
+- **Tap the robot** for its own menu: plant a seedling in front of you, or head home.
+- **Desktop:** you can also use WASD/arrows to drive, Space/E to open the menu for whatever's nearby, 1–9 to pick an action, Esc to close, and G for the field guide.
 
 Your progress saves automatically in the browser.
 
 ### The loop
 
-1. **Scan** anything new to add it to your field guide. The first time you meet a species, the action button offers to scan it.
-2. **Pull, cut and pick up** invasives and trash. Every action uses battery.
-3. **Rescue** native plants that are choked by invasives, then **collect seeds** from them, once per plant per day.
-4. At base, **sow** the seeds in nursery trays and **water** them every day. After 2 watered nights, **pot up** the seedling.
-5. **Plant** seedlings in cleared ground. Each native prefers its own zone.
-6. **Crate** feral cats, tegus and iguanas, **catch** brown anoles in your jar, and drop them all at the **relocation pad**. Cats get adopted 🐈.
-7. **Recycle** trash for parts, which upgrade your battery.
-8. **Sleep** at the charging dock to end the day. Seeds grow, cogon grass spreads, and wildlife may return overnight.
+1. **Arrival.** A pod drops into the neglected scrub and a small robot rolls out. The pod becomes its home.
+2. **Explore.** Scan anything new (🔍) to fill the field guide. Pull, cut, and pick up invasive plants and trash.
+3. **Rescue native plants** that invasives are choking. Each day you can **collect seeds** (🌰) and **snip a sprig** (💐) from each one.
+4. **Hydroponics at home.** Sow seeds in glass jars and top up their water (💧) daily. After 2 watered nights, **pot up** (🪴) the seedling and plant it outside.
+5. **Invasive animals.** **Crate** (📦) feral cats, tegus, and iguanas, and **jar** (🫙) brown anoles. Drop them at the **pad** (🚚). Cats get adopted, and postcards arrive.
+6. **Wildlife returns** once its needs are met. Each species' population grows when the habitat supports it and dips (never below 1) when it doesn't. Animals show their worries in **thought bubbles** that picture the problem.
+7. **Inside the pod:**
+
+   | Item | What it's for |
+   | --- | --- |
+   | Wildlife monitor | Populations, trends, needs, and sightings |
+   | Corkboard | First-sighting photos and postcards |
+   | Vases | Arranging your sprigs |
+   | Shelf | Figures of every species that has come home |
+   | Workbench | Spending recycled ⚙️ parts on a bigger battery, more jars, more vases, and room expansions (unlocked by the tortoise and the scrub-jay) |
+
+8. **End the day** by sleeping in the **charging cradle**. A picture-only morning card shows what happened overnight.
 
 ## Develop
 
@@ -46,10 +59,10 @@ One-time setup: go to **Settings → Pages → Source** and choose **GitHub Acti
 
 | Path | What lives there |
 | --- | --- |
-| `src/data/` | Species facts and stats, the map/zones, and the colour palette. This is the content to edit. |
-| `src/systems/` | Pure game logic with no Phaser dependency: state, actions, battery, nursery, habitat, night tick, and saving. Fully unit-tested. |
-| `src/art/placeholders.ts` | **Every** visual, drawn with Canvas 2D. To swap in real art, load images under the same texture keys. |
-| `src/scenes/` | Phaser scenes. `Boot` generates textures and shows the title screen; `World` holds the playfield. |
-| `src/entities/` | Critter wander AI. |
-| `src/ui/` | DOM HUD, joystick, keyboard input, and modal cards (field guide, morning summary, menu). |
+| `src/data/` | Species facts and stats, the map/zones, the home layouts, the action icons, and the colour palette. This is the content to edit. |
+| `src/systems/` | Pure game logic with no Phaser dependency: state, actions, battery, nursery, habitat, populations, home upgrades, pathfinding, night tick, and saving (with migration). Fully unit-tested. |
+| `src/art/` | **Every** visual, drawn with Canvas 2D. `placeholders.ts` holds the world art, `robot.ts` the robot and pod, and `home.ts` the interior. To swap in real art, load images under the same texture keys. |
+| `src/scenes/` | Phaser scenes: `Boot`, `Intro` (the pod drop), `World` (the scrub), and `Home` (the pod interior). Both play scenes extend `PlayScene` (tap-to-go, radial menus, and feedback). |
+| `src/entities/` | The robot (path following, antennas, emotes) and critter wander AI. |
+| `src/ui/` | DOM HUD, radial action menu, keyboard input, and modal cards (guide, morning, monitor, corkboard, pause). |
 | `docs/DESIGN.md` | The game design doc. |
