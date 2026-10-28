@@ -1,7 +1,7 @@
 // Wordless opening: a pod streaks down into the neglected scrub, thumps into the sand, and a
 // small robot peeks out, looks around at the mess, and decides to help.
 import Phaser from 'phaser';
-import { ART_SCALE } from '../art/placeholders';
+import { ART_SCALE, groundImage } from '../art/placeholders';
 import { TILE, WORLD_H, WORLD_W } from '../config';
 import { BASE_CENTER, POD, tileCenter } from '../data/map';
 import { audio } from '../audio';
@@ -36,7 +36,7 @@ export class IntroScene extends Phaser.Scene {
     audio.music('intro');
     audio.ambient('day');
     audio.sfx('whoosh', { vol: 0.9 });
-    this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
+    groundImage(this);
     for (const e of this.state.entities) {
       if (isAnimal(e)) {
         this.add.image(e.x, e.y, tex(this, e.species)).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);

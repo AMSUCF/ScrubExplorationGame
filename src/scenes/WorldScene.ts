@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ART_SCALE } from '../art/placeholders';
+import { ART_SCALE, groundImage } from '../art/placeholders';
 import { tex } from '../art/effects';
 import { FIRE_TICK_MS, MAP_H, MAP_W, REACH, ROBOT_SPEED, ROBOT_SPEED_CARRYING, ROBOT_SPEED_EMPTY, TILE, WORLD_H, WORLD_W } from '../config';
 import { audio } from '../audio';
@@ -73,7 +73,7 @@ export class WorldScene extends PlayScene {
   }
 
   create(): void {
-    this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
+    groundImage(this);
     this.physics.world.setBounds(TILE * 0.6, TILE * 0.6, WORLD_W - TILE * 1.2, WORLD_H - TILE * 1.2);
     this.blockers = this.physics.add.staticGroup();
 

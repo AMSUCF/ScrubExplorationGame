@@ -68,11 +68,11 @@ try {
   assert.deepEqual(missing, [], 'Production illustrations missing Phaser textures');
 
   const materials = await page.evaluate(() => {
-    const c = window.__game.textures.get('ground').getContext();
+    const ground = window.__game.textures.get('ground'), c = ground.getContext(), s = ground.customData.scale ?? 1;
     return [[320, 768], [1040, 240], [1504, 944]].map(([x, y]) => {
-      const pixels = c.getImageData(x - 40, y - 40, 80, 80).data, sum = [0, 0, 0];
+      const pixels = c.getImageData((x - 40) * s, (y - 40) * s, 80 * s, 80 * s).data, sum = [0, 0, 0];
       for (let n = 0; n < pixels.length; n += 4) for (let k = 0; k < 3; k++) sum[k] += pixels[n + k];
-      return sum.map(n => n / 6400);
+      return sum.map(n => n / (pixels.length / 4));
     });
   });
   const luminance = channels => channels.reduce((a, b) => a + b, 0) / 3;
