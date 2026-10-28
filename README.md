@@ -40,6 +40,8 @@ Add `?debug` to the URL to expose `window.__game` for poking around in the conso
 
 One-time setup: go to **Settings → Pages → Source** and choose **GitHub Actions**. If a deploy is blocked by environment protection, go to **Settings → Environments → github-pages** and allow the branch.
 
+**Troubleshooting:** if the live page is blank and the console shows a 404 for `/src/main.ts`, Pages is still set to *Deploy from a branch*. That setting serves the unbuilt source instead of `dist/`. Switch the source to **GitHub Actions** and push again.
+
 ## Project layout
 
 | Path | What lives there |
