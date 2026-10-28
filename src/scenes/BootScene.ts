@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { generateEffectTextures } from '../art/effects';
 import { generateTextures } from '../art/placeholders';
 import { services } from '../services';
 import { loadGame } from '../systems/save';
@@ -33,6 +34,7 @@ export class BootScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     generateTextures(this);
+    generateEffectTextures(this);
     const artKeys = new Set<string>(this.cache.json.get('art-manifest') as string[]);
     const cache = new Map<string, string>();
     services.icon = (key) => {

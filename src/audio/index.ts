@@ -40,6 +40,8 @@ class AudioEngine {
   private settings = loadSettings();
   private wantTheme: ThemeId | null = null;
   private wantAmbience: AmbienceMode = 'off';
+  private wantWeather = { kind: 'clear', windSpeed: 0.15 };
+  private fireLevel = 0;
   private listeners = new Set<() => void>();
 
   /** Create / resume the context. Call from a user gesture. */
@@ -84,6 +86,7 @@ class AudioEngine {
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     this.musicPlayer.play(this.settings.music ? this.wantTheme : null);
     this.ambience.setMode(this.wantAmbience);
+    this.weather(this.wantWeather.kind, this.wantWeather.windSpeed);
   }
 
   get ready(): boolean {
@@ -184,6 +187,22 @@ class AudioEngine {
 
   dusk(level: number): void {
     this.ctx && this.ambience.setDusk(level);
+  }
+
+  /** Rain hiss, wind and insect chorus for today's weather. */
+  weather(kind: string, windSpeed: number): void {
+    this.wantWeather = { kind, windSpeed };
+    if (!this.ctx) return;
+    const rain = { rain: 0.6, storm: 0.85, hurricane: 1 }[kind] ?? 0;
+    const insects = kind === 'rain' || kind === 'storm' || kind === 'hurricane' ? 0.25 : kind === 'cold' ? 0.1 : 1;
+    this.ambience.setWeather(rain, windSpeed, insects);
+  }
+
+  /** Crackle and roar of a nearby fire, 0..1. */
+  fire(level: number): void {
+    if (Math.abs(level - this.fireLevel) < 0.02) return;
+    this.fireLevel = level;
+    this.ctx && this.ambience.setFire(level);
   }
 
   /** 0..1 driving speed → motor hum. */

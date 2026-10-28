@@ -11,6 +11,7 @@ import { GameState, isAnimal } from '../systems/state';
 import { ICON } from '../data/icons';
 import { renderIcons } from '../ui/icons';
 import { WORLD_SIZE, worldSize } from '../data/visuals';
+import { tex } from '../art/effects';
 
 const S = 1 / ART_SCALE;
 
@@ -38,10 +39,10 @@ export class IntroScene extends Phaser.Scene {
     this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
     for (const e of this.state.entities) {
       if (isAnimal(e)) {
-        this.add.image(e.x, e.y, `art:${e.species}`).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
+        this.add.image(e.x, e.y, tex(this, e.species)).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
       } else if (e.kind !== 'burrow') {
         const p = tileCenter(e.tx, e.ty);
-        const img = this.add.image(p.x, p.y + 10, `art:${e.species}`).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
+        const img = this.add.image(p.x, p.y + 10, tex(this, e.species)).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
         if (e.kind === 'nativePlant') img.setTint(0xb8b08a);
       }
     }

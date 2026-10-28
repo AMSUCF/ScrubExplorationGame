@@ -3,6 +3,7 @@
 import { ZoneId } from '../data/map';
 import { NativeAnimalId } from '../data/species';
 import { ANIMAL_HOME, JAY_OAKS, burrowCount, digBurrow, healthyOaks, spawnNativeAnimal, zoneHealth } from './habitat';
+import { zoneFire } from './fire';
 import { Rng } from './rng';
 import { GameState, countWhere, entityZone, removeEntity } from './state';
 
@@ -93,13 +94,15 @@ export function unmetNeeds(s: GameState, species: NativeAnimalId): Need[] {
 export function capacity(s: GameState, species: NativeAnimalId): number {
   switch (species) {
     case 'tortoise':
-      return Math.min(6, 1 + Math.floor(Math.max(0, zoneHealth(s, 'sand') - 65) / 7));
+      // Freshly burned, open sand is tortoise heaven: new shoots and room to dig.
+      return Math.min(7, 1 + Math.floor(Math.max(0, zoneHealth(s, 'sand') - 65) / 7) + (zoneFire(s, 'sand').fresh >= 0.2 ? 1 : 0));
     case 'mouse':
       return Math.min(8, burrowCount(s) * 2);
     case 'indigo':
       return Math.min(3, Math.max(1, Math.floor(burrowCount(s) / 2)));
     case 'jay':
-      return Math.min(5, Math.max(1, Math.floor(healthyOaks(s, 'oak') / 3)));
+      // Scrub-jays favour oaks kept low by recent fire.
+      return Math.min(6, Math.max(1, Math.floor(healthyOaks(s, 'oak') / 3)) + (zoneFire(s, 'oak').fresh >= 0.2 ? 1 : 0));
   }
 }
 

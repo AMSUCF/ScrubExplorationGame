@@ -4,14 +4,19 @@ import { HomeItem, MAX_SLOTS_BY_LEVEL, MAX_VASES_BY_LEVEL, ROOM_MILESTONES, ROOM
 import { NativeAnimalId, NativePlantId } from '../data/species';
 import { GameState } from './state';
 
-export type UpgradeId = 'battery' | 'slots' | 'vase' | 'room';
+export type UpgradeId = 'battery' | 'slots' | 'vase' | 'room' | 'tank';
 
 export const UPGRADE_COST: Record<UpgradeId, number> = {
   battery: BATTERY_UPGRADE_COST,
   slots: 3,
   vase: 2,
   room: 6,
+  tank: 3,
 };
+
+/** Each water-tank upgrade adds this much, up to TANK_MAX_UPGRADES times. */
+export const TANK_UPGRADE_AMOUNT = 2;
+export const TANK_MAX_UPGRADES = 3;
 
 export const SLOTS_PER_UPGRADE = 2;
 export const VASE_CAPACITY = 3;
@@ -37,6 +42,9 @@ export function upgradeStatus(s: GameState, id: UpgradeId): UpgradeStatus {
       break;
     case 'vase':
       atMax = s.vases.length >= MAX_VASES_BY_LEVEL[s.homeLevel];
+      break;
+    case 'tank':
+      atMax = (s.tankUpgrades ?? 0) >= TANK_MAX_UPGRADES;
       break;
     case 'room': {
       atMax = s.homeLevel >= ROOM_SIZES.length - 1;
@@ -70,6 +78,11 @@ export function buyUpgrade(s: GameState, id: UpgradeId): boolean {
       break;
     case 'room':
       s.homeLevel++;
+      break;
+    case 'tank':
+      s.tankUpgrades = (s.tankUpgrades ?? 0) + 1;
+      s.waterMax += TANK_UPGRADE_AMOUNT;
+      s.water += TANK_UPGRADE_AMOUNT;
       break;
   }
   return true;

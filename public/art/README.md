@@ -28,6 +28,13 @@ The build also writes ignored review plates to `screenshots/art-catalog.png` and
 `screenshots/nature-scale.png`. The latter shows plants, wildlife, robot, and pod at one shared scale.
 See `docs/ART_DIRECTION.md` for art direction, provenance, and validation.
 
+## Placeholders still waiting for art
+
+The seasons, weather, fire and mini-game update draws 48 keys procedurally in `src/art/effects.ts`
+(flames, smoke, scorch, rain, lightning, fog, new litter, burrow neighbors, guide cards, mini-game
+backdrops and `ui_*` pictograms). See `docs/ART_ASSET_BRIEF_2.md` and `docs/art-requests.json`.
+Deliver them exactly like the rest of the set below; each one replaces its placeholder automatically.
+
 ## Replacing an illustration
 
 Put finished illustrations here as `<texture-key>.png` (e.g. `tortoise.png`, `ground_sand.png`) and

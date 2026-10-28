@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { ART_SCALE } from '../art/placeholders';
-import { MAP_H, MAP_W, REACH, ROBOT_SPEED, ROBOT_SPEED_CARRYING, ROBOT_SPEED_EMPTY, TILE, WORLD_H, WORLD_W } from '../config';
+import { tex } from '../art/effects';
+import { FIRE_TICK_MS, MAP_H, MAP_W, REACH, ROBOT_SPEED, ROBOT_SPEED_CARRYING, ROBOT_SPEED_EMPTY, TILE, WORLD_H, WORLD_W } from '../config';
 import { audio } from '../audio';
 import { Critter } from '../entities/Critter';
 import { Robot, floatIcon } from '../entities/Robot';
+import { services } from '../services';
 import { BASE_CENTER, POD, STATIONS, Station, isStationTile, stationTiles, tileCenter, zoneAtPx } from '../data/map';
 import { HAZARDS, INVASIVE_PLANTS, NativeAnimalId } from '../data/species';
 import { ActionResult, getActions, performAction } from '../systems/actions';
@@ -14,7 +16,14 @@ import { recordSighting, unmetNeeds } from '../systems/population';
 import { Entity, GameState, isAnimal, isChoked, pxToTile } from '../systems/state';
 import { Interactable, PlayScene } from './PlayScene';
 import { WORLD_SIZE, vineHost, worldSize } from '../data/visuals';
-import { isOverlayOpen } from '../ui/overlays';
+import { isOverlayOpen, showDiscovery } from '../ui/overlays';
+import { burnHistory } from '../ui/targetInfo';
+import { seasonOf } from '../systems/calendar';
+import { fireTick, fuelAge, lightningStrike } from '../systems/fire';
+import { hasPerk } from '../systems/progress';
+import { mulberry32 } from '../systems/rng';
+import { FireFx } from './world/fireFx';
+import { WeatherFx } from './world/weatherFx';
 
 const S = 1 / ART_SCALE;
 const SIGHT_RANGE = 120;
@@ -38,6 +47,12 @@ export class WorldScene extends PlayScene {
   private warnedEmpty = false;
   private duskHeard = -1;
   private habitatArt: Phaser.GameObjects.GameObject[] = [];
+  private weatherFx!: WeatherFx;
+  private fireFx!: FireFx;
+  private fireClock = 0;
+  private nextStrike = 0;
+  private fireRng = mulberry32(1);
+  private fireArrow!: Phaser.GameObjects.Image;
 
   constructor() {
     super('World');
@@ -52,6 +67,9 @@ export class WorldScene extends PlayScene {
     this.warnedEmpty = false;
     this.pointer = null;
     this.habitatArt = [];
+    this.fireClock = 0;
+    this.nextStrike = 0;
+    this.fireRng = mulberry32((this.state.seed ^ Math.imul(this.state.day, 0x27d4eb2d) ^ Date.now()) >>> 0);
   }
 
   create(): void {
@@ -77,7 +95,17 @@ export class WorldScene extends PlayScene {
     this.physics.add.collider(this.robot.body, this.blockers);
 
     this.dusk = this.add.rectangle(0, 0, 8000, 8000, 0xff9a3c, 0).setScrollFactor(0).setDepth(200000);
+    this.fireFx = new FireFx(this, this.state);
     this.syncEntities(true);
+    this.weatherFx = new WeatherFx(this, this.state.weather, seasonOf(this.state.day));
+    this.fireArrow = this.add.image(0, 0, tex(this, 'ui_fire')).setDisplaySize(16, 16).setDepth(250001).setVisible(false);
+    // Storm days bring a few lightning strikes, spread through the time spent outdoors.
+    if (this.state.weather.strikes > 0) this.nextStrike = this.time.now + 9000 + Math.random() * 12000;
+    this.events.once('shutdown', () => {
+      this.weatherFx.destroy();
+      this.fireFx.destroy();
+      audio.fire(0);
+    });
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
@@ -91,6 +119,7 @@ export class WorldScene extends PlayScene {
     this.setupPlay();
     audio.music('scrub');
     audio.ambient('day');
+    audio.weather(this.state.weather.kind, this.state.weather.windSpeed);
     if (this.state.day === 1 && this.state.stats.invasivesRemoved === 0) this.showPointer();
     this.saveNow();
   }
@@ -127,6 +156,7 @@ export class WorldScene extends PlayScene {
   protected grid(): Grid {
     const blocked = new Set<number>();
     for (const e of this.state.entities) if (!isAnimal(e) && this.blocks(e)) blocked.add(e.ty * MAP_W + e.tx);
+    for (const f of this.state.fires) blocked.add(f.ty * MAP_W + f.tx);
     return {
       w: MAP_W,
       h: MAP_H,
@@ -145,8 +175,16 @@ export class WorldScene extends PlayScene {
           : { target: { type: 'station', station: st }, x: p.x, y: p.y, r: 20 },
       );
     }
+    for (const f of this.state.fires) {
+      const p = tileCenter(f.tx, f.ty);
+      out.push({ target: { type: 'fire', tx: f.tx, ty: f.ty }, x: p.x, y: p.y, r: 16, reach: 110, bounds: { x: p.x - 18, y: p.y - 22, w: 36, h: 40 } });
+    }
     for (const e of this.state.entities) {
-      if (e.kind === 'burrow') continue;
+      if (e.kind === 'burrow') {
+        const p = tileCenter(e.tx, e.ty);
+        out.push({ target: { type: 'entity', entity: e }, x: p.x, y: p.y, r: 22, bounds: { x: p.x - 30, y: p.y - 18, w: 60, h: 36 } });
+        continue;
+      }
       if (isAnimal(e)) {
         const [w, h] = worldSize(e, this.state.day);
         out.push({ target: { type: 'entity', entity: e }, x: e.x, y: e.y - 6, r: 16,
@@ -185,6 +223,7 @@ export class WorldScene extends PlayScene {
 
   protected refreshViews(): void {
     this.syncEntities();
+    this.fireFx.sync();
     if (this.pointer && !this.state.entities.some((e) => e.id === this.pointer?.getData('id'))) {
       this.pointer.destroy();
       this.pointer = null;
@@ -206,9 +245,17 @@ export class WorldScene extends PlayScene {
         }
       }
       if (e.kind === 'nativePlant') {
-        if (isChoked(this.state, e)) view.sprite.setTint(0xd1d5bd);
+        const charred = e.burnedDay !== undefined && this.state.day - e.burnedDay < 1;
+        if (charred) view.sprite.setTint(0x7a6a58);
+        else if (isChoked(this.state, e)) view.sprite.setTint(0xd1d5bd);
         else view.sprite.clearTint();
         if (!this.tweens.isTweening(view.sprite)) view.sprite.setDisplaySize(...worldSize(e, this.state.day));
+      }
+      if (e.kind === 'invasiveAnimal' && view.critter) {
+        // A cold snap leaves iguanas stiff and still.
+        const cold = e.species === 'iguana' && this.state.weather.kind === 'cold';
+        view.critter.frozen = cold;
+        if (cold) view.sprite.setTint(0xbcd6ea);
       }
     }
     for (const [id, view] of this.views) {
@@ -224,12 +271,12 @@ export class WorldScene extends PlayScene {
 
   private createView(e: Entity): EntityView {
     if (isAnimal(e)) {
-      const sprite = this.add.image(e.x, e.y, `art:${e.species}`).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
+      const sprite = this.add.image(e.x, e.y, tex(this, e.species)).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
       return { sprite, critter: new Critter(e, sprite), nextBubble: this.time.now + 1500 + Math.random() * 4000, bubbleTurn: 0 };
     }
     const p = tileCenter(e.tx, e.ty);
     if (e.kind === 'burrow') return { sprite: this.add.image(p.x, p.y, 'art:burrow').setDisplaySize(...WORLD_SIZE.burrow).setDepth(1) };
-    const sprite = this.add.image(p.x, p.y + 10, `art:${e.species}`).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
+    const sprite = this.add.image(p.x, p.y + 10, tex(this, e.species)).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
     const view: EntityView = { sprite };
     if (this.blocks(e)) view.blocker = this.addBlocker(p.x, p.y + 4, e.kind === 'nativePlant' ? 14 : e.kind === 'hazard' ? 26 : 24, e.kind === 'nativePlant' ? 11 : 16);
     return view;
@@ -240,12 +287,17 @@ export class WorldScene extends PlayScene {
     this.habitatArt.forEach(o => o.destroy()); this.habitatArt = [];
     const keep = <T extends Phaser.GameObjects.GameObject>(o: T): T => { this.habitatArt.push(o); return o; };
     for (const e of this.state.entities) {
-      if (e.kind === 'nativePlant' || e.kind === 'invasivePlant' && ['pepper', 'thicket'].includes(e.species)) {
+      if (e.kind === 'nativePlant' || (e.kind === 'invasivePlant' && e.species === 'pepper') || (e.kind === 'hazard' && e.species === 'thicket')) {
         const p = tileCenter(e.tx, e.ty), [w] = worldSize(e, this.state.day);
         const litter = e.species === 'oak' || e.species === 'hickory' ? 'litter_oak' : e.species === 'rosemary' ? 'litter_rosemary' : 'litter_sand';
         keep(this.add.image(p.x + 5, p.y + 3, `art:${litter}`).setDisplaySize(w * 1.05, w * .5).setAlpha(.8).setDepth(-5));
         const shade = `art:shade_${e.species}`;
         if (this.textures.exists(shade)) keep(this.add.image(p.x + w * .08, p.y + 8, shade).setDisplaySize(w * .95, w * .32).setDepth(-4));
+      }
+      if (e.kind === 'nativePlant' && e.burnedDay !== undefined && this.state.day - e.burnedDay < 3) {
+        const p = tileCenter(e.tx, e.ty);
+        keep(this.add.image(p.x, p.y + 8, tex(this, 'resprout')).setDisplaySize(30, 25).setDepth(p.y + 10.2));
+        continue;
       }
       if (e.kind === 'nativePlant' && !isChoked(this.state, e)) {
         const p = tileCenter(e.tx, e.ty);
@@ -279,6 +331,11 @@ export class WorldScene extends PlayScene {
 
   protected feedback(res: ActionResult): void {
     super.feedback(res);
+    if (res.fireAt) {
+      audio.sfx('ignite');
+      this.fireFx.sync();
+      this.learnFire();
+    }
     if (res.friend) this.views.get(res.friend)?.critter?.greet(this.robot.x);
     for (const plant of res.rescued) {
       const p = tileCenter(plant.tx, plant.ty);
@@ -341,8 +398,12 @@ export class WorldScene extends PlayScene {
 
   private wildlife(): void {
     const now = this.time.now;
+    // Fog lets the robot creep closer; sharp eyes (a later perk) spot animals from farther away.
+    const sightRange = SIGHT_RANGE * (this.state.weather.kind === 'fog' ? 1.3 : 1) * (hasPerk(this.state, 9) ? 1.4 : 1);
+    const animals = new Map<number, Entity>();
+    for (const e of this.state.entities) if (isAnimal(e)) animals.set(e.id, e);
     for (const [id, view] of this.views) {
-      const e = this.state.entities.find((x) => x.id === id);
+      const e = animals.get(id);
       if (!e || (e.kind !== 'nativeAnimal' && e.kind !== 'invasiveAnimal')) continue;
       const dx = view.sprite.x - this.robot.x;
       const d = Math.hypot(dx, view.sprite.y - this.robot.y);
@@ -356,7 +417,7 @@ export class WorldScene extends PlayScene {
         }
         continue;
       }
-      if (d < SIGHT_RANGE) {
+      if (d < sightRange) {
         const seen = recordSighting(this.state, e.species);
         if (seen.counted) {
           floatIcon(this, view.sprite.x - 8, view.sprite.y - 22, '👁️');
@@ -400,9 +461,94 @@ export class WorldScene extends PlayScene {
 
   // --- frame -------------------------------------------------------------------------------
 
+  // --- fire and storms ---------------------------------------------------------------------
+
+  private stepFire(delta: number): void {
+    if (this.state.fires.length === 0) {
+      this.fireClock = 0;
+      return;
+    }
+    this.fireClock += delta;
+    if (this.fireClock < FIRE_TICK_MS) return;
+    this.fireClock = 0;
+    const before = this.state.entities.length;
+    const step = fireTick(this.state, this.fireRng);
+    this.fireFx.sync(step.ignited);
+    // Rebuilding plant views is costly, so only do it when flames reached a plant or removed something.
+    const touched = step.ignited.some((t) => this.state.entities.some((e) => e.kind === 'nativePlant' && e.tx === t.tx && e.ty === t.ty));
+    if (touched || this.state.entities.length !== before) this.syncEntities();
+    // Wildlife scurries away from new flames (tortoises head for their burrows).
+    for (const t of step.ignited) {
+      const p = tileCenter(t.tx, t.ty);
+      for (const view of this.views.values()) if (view.critter && Math.hypot(view.sprite.x - p.x, view.sprite.y - p.y) < 80) view.critter.flee(p.x, p.y);
+    }
+    if (this.state.fires.length === 0) {
+      const r = this.state.fireToday;
+      services.hud?.toast(`The fire is out. ${r.renewed} patch${r.renewed === 1 ? '' : 'es'} of scrub renewed${r.lost ? `, ${r.lost} young plant${r.lost === 1 ? '' : 's'} lost` : ''}${r.thickets ? `, ${r.thickets} thicket${r.thickets === 1 ? '' : 's'} cleared` : ''}.`);
+    }
+    this.saveSoon();
+  }
+
+  private stepStorm(): void {
+    if (this.nextStrike === 0 || this.time.now < this.nextStrike || this.busy) return;
+    const strike = lightningStrike(this.state, this.fireRng);
+    this.nextStrike = this.state.weather.strikes > 0 ? this.time.now + 16000 + Math.random() * 22000 : 0;
+    if (!strike) return;
+    const p = tileCenter(strike.tx, strike.ty);
+    const d = Math.hypot(p.x - this.robot.x, p.y - this.robot.y);
+    const bolt = this.add.image(p.x, p.y + 12, tex(this, 'lightning')).setOrigin(0.5, 1).setDisplaySize(40, 150).setDepth(199995);
+    this.tweens.add({ targets: bolt, alpha: 0, duration: 380, delay: 90, onComplete: () => bolt.destroy() });
+    this.weatherFx.flash();
+    audio.sfx('thunder', { delay: Math.min(2.5, d / 700), vol: Phaser.Math.Clamp(1.1 - d / 1600, 0.35, 1), pan: Phaser.Math.Clamp((p.x - this.robot.x) / 600, -0.8, 0.8) });
+    if (!strike.ignited) return;
+    this.fireFx.sync([{ tx: strike.tx, ty: strike.ty }]);
+    this.syncEntities();
+    this.robot.emote('❗');
+    this.learnFire();
+    services.hud?.toast(`Lightning started a fire in the ${zoneAtPx(p.x, p.y) === 'oak' ? 'Oak Scrub' : zoneAtPx(p.x, p.y) === 'rosemary' ? 'Rosemary Bald' : 'Sand Scrub'}. ${burnHistory(this.state, strike.tx, strike.ty, fuelAge(this.state, strike.tx, strike.ty))}. Tap the flames to decide: contain it, or let it burn.`);
+    this.saveSoon();
+  }
+
+  /** The first fire the robot sees opens its field-guide page: why scrub needs fire, and when it doesn't. */
+  private learnFire(): void {
+    if (this.state.scanned.includes('fire')) return;
+    this.state.scanned.push('fire');
+    services.unseenGuide++;
+    void showDiscovery('fire');
+  }
+
+  /** A little flame at the screen edge points toward an off-screen fire. */
+  private pointToFire(): void {
+    const near = this.fireFx.nearest(this.robot.x, this.robot.y);
+    const view = this.cameras.main.worldView;
+    if (!near || view.contains(near.x, near.y)) {
+      this.fireArrow.setVisible(false);
+      audio.fire(near ? Phaser.Math.Clamp(1 - near.d / 500, 0.15, 1) * Math.min(1, this.fireFx.count / 6) : 0);
+      return;
+    }
+    const cx = view.centerX, cy = view.centerY;
+    const dx = near.x - cx, dy = near.y - cy;
+    const k = Math.min((view.width / 2 - 14) / Math.abs(dx || 1), (view.height / 2 - 14) / Math.abs(dy || 1));
+    this.fireArrow.setVisible(true).setPosition(cx + dx * k, cy + dy * k).setAlpha(0.7 + Math.sin(this.time.now / 160) * 0.3);
+    audio.fire(Phaser.Math.Clamp(1 - near.d / 700, 0, 0.4) * Math.min(1, this.fireFx.count / 6));
+  }
+
   update(_time: number, delta: number): void {
     this.updatePlay(delta);
+    this.weatherFx.update(delta, Phaser.Math.Clamp((0.5 - batteryFraction(this.state)) / 0.5, 0, 1));
     if (isOverlayOpen()) return;
+    this.stepFire(delta);
+    this.stepStorm();
+    this.fireFx.update(delta);
+    this.pointToFire();
+    // Grasses and shrubs rock in the wind (trees carrying vines stay still so the vines line up).
+    const t = this.time.now / 1000, sway = this.weatherFx.sway, lean = this.state.weather.wind.x * sway * 0.6;
+    for (const e of this.state.entities) {
+      if (e.kind !== 'invasivePlant' && e.kind !== 'nativePlant') continue;
+      if (e.species === 'oak' || e.species === 'hickory' || e.species === 'pepper' || e.species === 'airpotato') continue;
+      const v = this.views.get(e.id);
+      if (v && !this.tweens.isTweening(v.sprite)) v.sprite.setAngle(lean + Math.sin(t * (1.4 + sway * 0.3) + e.id) * sway);
+    }
     // Let the player read the world behind a canopy without changing the tree's depth.
     for (const e of this.state.entities) {
       if (e.kind !== 'nativePlant' && e.kind !== 'invasivePlant') continue;

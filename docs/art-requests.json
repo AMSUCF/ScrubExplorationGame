@@ -1,0 +1,1157 @@
+{
+  "version": 1,
+  "scale": 4,
+  "style": "Cozy storybook illustration for a top-down 3/4-view mobile game about a small robot restoring Florida scrub. Match the existing Scrub Bot art: finely painted botanical detail for nature, rounded and gentle shapes, warm coloured outlines (never black), light from the upper-left, a sun-bleached palette of sand creams, sage and olive greens and dusty blues with small warm accents. Painterly but clean; readable when shown small. Transparent PNG background unless noted.",
+  "delivery": "Deliver each asset as public/art/<key>.png at 4x its logical size (the 'pixels' field), sRGB. Add the key to public/art/manifest.json and its logical size to src/art/catalog.json, then run npm run art:check. The game swaps in the illustration automatically.",
+  "assets": [
+    {
+      "key": "wildfire",
+      "group": "Fire and weather effects",
+      "logical": [
+        24,
+        32
+      ],
+      "pixels": [
+        96,
+        128
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre",
+      "prompt": "A small cluster of wildfire flames burning one patch of scrub: three or four rounded tongues of flame in deep orange, tangerine and buttery yellow around a pale cream core, a faint warm glow at the base. Storybook-campfire friendly rather than frightening.",
+      "mustShow": [
+        "Flames only, rising from the bottom edge",
+        "Soft painterly edges",
+        "Bright enough to read on pale sand"
+      ],
+      "avoid": [
+        "Smoke, logs or ground",
+        "Realistic photographic fire",
+        "Black outlines"
+      ],
+      "notes": "The game flickers and scales it. Optional extra frames wildfire_1 and wildfire_2 on the same canvas would allow true animation."
+    },
+    {
+      "key": "smoke",
+      "group": "Fire and weather effects",
+      "logical": [
+        24,
+        24
+      ],
+      "pixels": [
+        96,
+        96
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A soft, rounded puff of grey-lavender woodsmoke, semi-transparent (about 50% opacity), slightly lighter at the top-left.",
+      "mustShow": [
+        "Feathered edges that fade to transparent"
+      ],
+      "avoid": [
+        "Hard outlines",
+        "Black smoke"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ember",
+      "group": "Fire and weather effects",
+      "logical": [
+        6,
+        6
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A single glowing orange ember with a soft radial halo. Also stretched by the game into the warm glow under flames, so keep it radially soft.",
+      "mustShow": [
+        "Radial falloff to fully transparent"
+      ],
+      "avoid": [
+        "Sharp edges"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "scorch",
+      "group": "Fire and weather effects",
+      "logical": [
+        44,
+        30
+      ],
+      "pixels": [
+        176,
+        120
+      ],
+      "transparent": true,
+      "anchor": "centre (ground decal)",
+      "prompt": "A top-down patch of freshly burned ground: soft ash-grey and soot-brown blotches, scattered white ash flecks, one or two tiny orange embers, and charred grass stubble. Feathered edges that fade into the sand. Used as a ground stamp at random rotations, so it must look natural at any angle.",
+      "mustShow": [
+        "Irregular, organic outline",
+        "Edges fully feathered to transparent"
+      ],
+      "avoid": [
+        "Hard rim or circle",
+        "Pure black"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "firebreak",
+      "group": "Fire and weather effects",
+      "logical": [
+        34,
+        22
+      ],
+      "pixels": [
+        136,
+        88
+      ],
+      "transparent": true,
+      "anchor": "centre (ground decal)",
+      "prompt": "A short strip of freshly raked bare sand seen from above: parallel rake furrows in tan and light brown, a few raked-up twigs at the edges, feathered outline.",
+      "mustShow": [
+        "Parallel furrows",
+        "Lighter than the surrounding ground"
+      ],
+      "avoid": [
+        "Tools or footprints"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "resprout",
+      "group": "Fire and weather effects",
+      "logical": [
+        26,
+        22
+      ],
+      "pixels": [
+        104,
+        88
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre",
+      "prompt": "A charred root crown at ground level with bright new green shoots sprouting from it: the first week after fire, when scrub oaks and saw palmettos resprout from their roots.",
+      "mustShow": [
+        "Blackened stump base with a soft contact shadow",
+        "Five to seven fresh, small green shoots"
+      ],
+      "avoid": [
+        "Flowers",
+        "A whole tree"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "raindrop",
+      "group": "Fire and weather effects",
+      "logical": [
+        3,
+        14
+      ],
+      "pixels": [
+        12,
+        56
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "One falling raindrop streak: a thin pale-blue line with a brighter head and a soft tail.",
+      "mustShow": [
+        "Very thin"
+      ],
+      "avoid": [
+        "Teardrop shape"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "puddle",
+      "group": "Fire and weather effects",
+      "logical": [
+        36,
+        14
+      ],
+      "pixels": [
+        144,
+        56
+      ],
+      "transparent": true,
+      "anchor": "centre (ground decal)",
+      "prompt": "A shallow rain puddle on sand from above, reflecting pale sky blue, with a soft wet darker rim that fades into the ground.",
+      "mustShow": [
+        "Feathered edges"
+      ],
+      "avoid": [
+        "Ripples rings like a target",
+        "Hard outline"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "leaf_blown",
+      "group": "Fire and weather effects",
+      "logical": [
+        10,
+        8
+      ],
+      "pixels": [
+        40,
+        32
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A small curled dry scrub-oak leaf in tan and russet, tumbling in the wind.",
+      "mustShow": [
+        "Small unlobed oak leaf shape"
+      ],
+      "avoid": [
+        "Lobed northern oak or maple leaf"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "petal",
+      "group": "Fire and weather effects",
+      "logical": [
+        6,
+        6
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A single soft pink wildflower petal drifting on the spring breeze.",
+      "mustShow": [],
+      "avoid": [],
+      "notes": ""
+    },
+    {
+      "key": "seed_fluff",
+      "group": "Fire and weather effects",
+      "logical": [
+        6,
+        6
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A fluffy, silky white cogon-grass seed with a tiny brown seed at its base, floating on summer wind.",
+      "mustShow": [
+        "Silky white tuft"
+      ],
+      "avoid": [
+        "Dandelion clock sphere"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "lightning",
+      "group": "Fire and weather effects",
+      "logical": [
+        40,
+        140
+      ],
+      "pixels": [
+        160,
+        560
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre (strike point)",
+      "prompt": "A stylised lightning bolt striking down: a chunky cream-white jagged bolt with a pale yellow glow, slightly tapered toward the bottom where it hits the ground.",
+      "mustShow": [
+        "Glow fading to transparent around the bolt",
+        "Base touches the bottom edge"
+      ],
+      "avoid": [
+        "Thin realistic branching",
+        "Purple sci-fi lightning"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "fog_wisp",
+      "group": "Fire and weather effects",
+      "logical": [
+        128,
+        48
+      ],
+      "pixels": [
+        512,
+        192
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A long, soft horizontal band of morning mist: very low-contrast white with feathered edges on every side, almost invisible on its own.",
+      "mustShow": [
+        "Fully feathered edges"
+      ],
+      "avoid": [
+        "Clouds with outlines",
+        "Any hard shapes"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "firefly",
+      "group": "Fire and weather effects",
+      "logical": [
+        8,
+        8
+      ],
+      "pixels": [
+        32,
+        32
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A tiny glowing yellow-green firefly light: a bright dot with a soft halo.",
+      "mustShow": [],
+      "avoid": [
+        "A detailed insect body"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "frost",
+      "group": "Fire and weather effects",
+      "logical": [
+        10,
+        10
+      ],
+      "pixels": [
+        40,
+        40
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "A delicate pale-blue frost sparkle for a Florida cold snap: a six-point twinkle.",
+      "mustShow": [],
+      "avoid": [
+        "Snowman or snowfall"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "balloon",
+      "group": "Storm litter",
+      "logical": [
+        16,
+        24
+      ],
+      "pixels": [
+        64,
+        96
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre",
+      "prompt": "A half-deflated foil heart balloon that blew in on a storm and snagged on the sand, with a curly pink ribbon trailing on the ground. Muted pink foil with a soft highlight and a contact shadow.",
+      "mustShow": [
+        "Crumpled foil, clearly litter",
+        "Ribbon on the ground"
+      ],
+      "avoid": [
+        "Text or logos",
+        "A fully inflated party balloon"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "plastic",
+      "group": "Storm litter",
+      "logical": [
+        20,
+        14
+      ],
+      "pixels": [
+        80,
+        56
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre",
+      "prompt": "A crumpled translucent white plastic grocery bag lying flat on sand, with soft folds and a contact shadow.",
+      "mustShow": [
+        "Translucent film"
+      ],
+      "avoid": [
+        "Text or logos"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "can",
+      "group": "Storm litter",
+      "logical": [
+        14,
+        10
+      ],
+      "pixels": [
+        56,
+        40
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre",
+      "prompt": "A crushed red soda can lying on its side in the sand, silver rim and a dent, contact shadow.",
+      "mustShow": [
+        "Crushed side"
+      ],
+      "avoid": [
+        "Brand names, text or logos"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "frog",
+      "group": "Burrow neighbors (species)",
+      "logical": [
+        18,
+        14
+      ],
+      "pixels": [
+        72,
+        56
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre; animal faces right",
+      "prompt": "A Florida gopher frog (Lithobates capito) sitting at a burrow: a stout, chunky frog with a large head, creamy tan to grey body densely covered in dark brown irregular spots, warty skin, big round golden eyes with dark pupils, gentle expression.",
+      "mustShow": [
+        "Stocky body and short head",
+        "Dense dark spots on pale skin",
+        "Warty skin texture"
+      ],
+      "avoid": [
+        "Bright green colour",
+        "Smooth tree-frog look",
+        "Red eyes"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "beetle",
+      "group": "Burrow neighbors (species)",
+      "logical": [
+        12,
+        9
+      ],
+      "pixels": [
+        48,
+        36
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre; faces right",
+      "prompt": "A gopher tortoise scarab (Onthophagus polyphemi): a tiny, rounded, glossy dark brown-black dung beetle with finely ridged wing covers and stout, spiny front legs for digging.",
+      "mustShow": [
+        "Rounded scarab body",
+        "Glossy highlight",
+        "Digging front legs"
+      ],
+      "avoid": [
+        "Ladybug spots",
+        "Long horns",
+        "Bright metallic green"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "cricket",
+      "group": "Burrow neighbors (species)",
+      "logical": [
+        16,
+        11
+      ],
+      "pixels": [
+        64,
+        44
+      ],
+      "transparent": true,
+      "anchor": "bottom-centre; faces right",
+      "prompt": "A camel cricket (Ceuthophilus) from a tortoise burrow: humpbacked and wingless, mottled pale tan and brown, with extremely long antennae and long, spiny, bent hind legs.",
+      "mustShow": [
+        "Humped back",
+        "Very long antennae",
+        "No wings"
+      ],
+      "avoid": [
+        "Green grasshopper look",
+        "Wings"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "fire",
+      "group": "Field guide cards",
+      "logical": [
+        48,
+        48
+      ],
+      "pixels": [
+        192,
+        192
+      ],
+      "transparent": true,
+      "anchor": "centre (rounded card)",
+      "prompt": "A rounded-square field-guide vignette of a gentle prescribed burn creeping low through wiregrass and saw palmetto under a blue sky, soft smoke drifting, fresh green shoots in the foreground. Hopeful, not scary.",
+      "mustShow": [
+        "Rounded corners with a transparent outside",
+        "Low flames in scrub"
+      ],
+      "avoid": [
+        "People or firefighters",
+        "Burning houses"
+      ],
+      "notes": "Opaque inside a rounded card; the corners outside the rounding must stay transparent."
+    },
+    {
+      "key": "storm",
+      "group": "Field guide cards",
+      "logical": [
+        48,
+        48
+      ],
+      "pixels": [
+        192,
+        192
+      ],
+      "transparent": true,
+      "anchor": "centre (rounded card)",
+      "prompt": "A rounded-square vignette of a Florida summer thunderhead over the scrub: a towering cloud, a single lightning bolt, and a grey curtain of rain over palmettos.",
+      "mustShow": [
+        "Rounded corners with a transparent outside"
+      ],
+      "avoid": [
+        "Tornado",
+        "Damage"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "edge",
+      "group": "Field guide cards",
+      "logical": [
+        48,
+        48
+      ],
+      "pixels": [
+        192,
+        192
+      ],
+      "transparent": true,
+      "anchor": "centre (rounded card)",
+      "prompt": "A rounded-square vignette of the habitat edge: a road and a fence line where the scrub begins, fluffy invasive seeds drifting in on the wind, and a pink natal-grass tuft growing by the roadside.",
+      "mustShow": [
+        "Rounded corners with a transparent outside",
+        "Road or yard meeting scrub"
+      ],
+      "avoid": [
+        "Cars or people"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "burrow_section",
+      "group": "Mini-game backdrops",
+      "logical": [
+        180,
+        320
+      ],
+      "pixels": [
+        720,
+        1280
+      ],
+      "transparent": true,
+      "anchor": "whole image",
+      "prompt": "A side-view cross-section of a gopher tortoise burrow for the burrow-scope mini-game: a thin strip of sky and scrub at the top, the burrow's sandy apron at the top-left, then layered pale-to-tan sand that grows warmer and darker with depth, a few roots hanging down, and a tortoise-shell-wide dark-brown tunnel sloping down in an S-curve to a rounded resting chamber near the bottom. Leave the tunnel empty: the game places the animals.",
+      "mustShow": [
+        "The tunnel must follow this path in the 180×320 logical canvas: M30 40 C130 90 30 170 120 220 Q160 245 120 285",
+        "Chamber centred near (112, 288)",
+        "Rounded corners (about 12 logical px) with a transparent outside"
+      ],
+      "avoid": [
+        "Animals in the tunnel",
+        "Text or labels"
+      ],
+      "notes": "The game darkens everything except a moving circle of light, so mid-tones read best."
+    },
+    {
+      "key": "dig_sand",
+      "group": "Mini-game backdrops",
+      "logical": [
+        270,
+        270
+      ],
+      "pixels": [
+        1080,
+        1080
+      ],
+      "transparent": true,
+      "anchor": "whole image",
+      "prompt": "A top-down close-up of pale Florida scrub sand for the rhizome-dig mini-game: fine quartz grains, a few tiny pebbles and bits of leaf litter, very low contrast so that the game's white runner lines stand out on top.",
+      "mustShow": [
+        "Even, low-contrast texture",
+        "Rounded corners (about 14 logical px) with a transparent outside"
+      ],
+      "avoid": [
+        "Plants, roots or lines (the game draws them)"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_breezy",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Wind: three curling gusts. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in soft blue-grey, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_heat",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Hot and dry: a thermometer with a little sun. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in warm coral, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_rain",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Rain: a puffy cloud with three falling drops. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in pale blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_storm",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Thunderstorm: a grey cloud with a yellow lightning bolt. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in slate and yellow, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_hurricane",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Hurricane: a spiral swirl. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in storm blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_fog",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Fog: three soft horizontal bands. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in misty grey, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_cold",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Cold snap: a frosty six-point snowflake. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in icy blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_spring",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Spring: a five-petal pink wildflower. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in pink and gold, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_summer",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Summer wet season: a sun over gentle waves. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in sunny yellow and blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_fall",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Fall: a small scrub-oak leaf and an acorn. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in russet and tan, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_winter",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Winter: a cozy striped scarf. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in coral, cream and mint, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_fire",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Fire: a single rounded flame. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in orange and yellow, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_douse",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Spray water: a little red spray nozzle with water droplets. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in red and blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_rake",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Rake a firebreak: a garden rake. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in wood and grey, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_torch",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Drip torch for prescribed burns: a red canister with a curved spout and a small flame at the tip. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in red, grey and orange, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_dig",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Dig out roots: a garden trowel with a pale root. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in steel grey and wood, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_scope",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Burrow scope: a little round camera lens on a bendy cable. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in mint and slate, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_sort",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Sort recycling: three small bins in green, blue and yellow. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in green, blue, yellow, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_task",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Today's goals: a clipboard with three check marks. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in cream and mint, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_level",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Stewardship level: a gold star with a small green leaf. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in gold and green, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_edge",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "The habitat edge: three fence posts with an arrow curving in. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in wood and brick red, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    },
+    {
+      "key": "ui_tank",
+      "group": "Pictograms (64×64)",
+      "logical": [
+        64,
+        64
+      ],
+      "pixels": [
+        256,
+        256
+      ],
+      "transparent": true,
+      "anchor": "centre",
+      "prompt": "Water tank: a rounded water tank showing its water level. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in pale blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "mustShow": [
+        "Reads clearly at 24 px",
+        "Same weight and padding as the existing ui_* icons"
+      ],
+      "avoid": [
+        "Text",
+        "Black outlines",
+        "Emoji style"
+      ],
+      "notes": ""
+    }
+  ]
+}

@@ -17,18 +17,25 @@ import {
   speciesName,
 } from '../data/species';
 import { canAfford, spend } from './battery';
+import { calendar } from './calendar';
+import { FIRE_STATE_INFO, burnPrescription, fireState, fuelAge, fuelAt, ignite, isBurning } from './fire';
+import { CareEvent, Credit, LevelUp, TOOL_LEVEL, ToolId, credit, hasPerk, hasTool } from './progress';
+import { DailyTask } from './tasks';
+import { WEATHER } from './weather';
 import { UPGRADE_COST, UpgradeId, buyUpgrade, clearVase, placeSprig, upgradeStatus } from './home';
 import { pot, sow, trayStage, water } from './nursery';
 import { Tile } from './pathfind';
 import { chokingVines } from '../data/visuals';
 import { careStage } from './vineCare';
 import {
+  BagItem,
   Entity,
   GameState,
   NATIVE_PLANTS,
   NativePlantEntity,
   addEntity,
   isChoked,
+  isRegrowing,
   refreshRescues,
   removeEntity,
   tileOccupied,
@@ -38,7 +45,8 @@ export type Target =
   | { type: 'entity'; entity: Entity }
   | { type: 'station'; station: Station }
   | { type: 'home'; item: HomeItem }
-  | { type: 'self'; spot: Tile | null };
+  | { type: 'self'; spot: Tile | null }
+  | { type: 'fire'; tx: number; ty: number };
 
 export type Verb =
   | 'scan'
@@ -63,7 +71,17 @@ export type Verb =
   | 'exit'
   | 'plant'
   | 'goHome'
-  | 'rescue';
+  | 'rescue'
+  | 'contain'
+  | 'watchFire'
+  | 'ignite'
+  | 'photo'
+  | 'dig'
+  | 'scope'
+  | 'sort';
+
+/** Activities that open a mini-game; the scene plays it, then applies the outcome. */
+export type Minigame = 'fireLine' | 'photo' | 'dig' | 'scope' | 'sort';
 
 export interface Action {
   verb: Verb;
@@ -79,6 +97,8 @@ export interface Action {
   /** Emoji explaining why it's disabled (🔋, 🎒, 🥀 …). */
   block?: string;
   blockTex?: string;
+  /** Stewardship level that unlocks this tool. */
+  needLevel?: number;
   target: Target;
   param?: string;
 }
@@ -107,6 +127,14 @@ export interface ActionResult {
   rescued: NativePlantEntity[];
   note?: string;
   friend?: number;
+  /** A mini-game to open next. */
+  play?: Minigame;
+  /** A flame was lit here (prescribed burn). */
+  fireAt?: { tx: number; ty: number };
+  xp?: number;
+  levelUps?: LevelUp[];
+  tasks?: DailyTask[];
+  allDone?: boolean;
 }
 
 const VERB_ICON: Record<InvasivePlantId | HazardId, string> = {
@@ -118,7 +146,45 @@ const VERB_ICON: Record<InvasivePlantId | HazardId, string> = {
   bottle: ICON.pickup,
   fence: ICON.pickup,
   thicket: ICON.trim,
+  balloon: ICON.pickup,
+  plastic: ICON.pickup,
+  can: ICON.pickup,
 };
+
+/** A tool button: usable once its level is reached, otherwise shown locked as a little teaser. */
+function tool(state: GameState, target: Target, tool: ToolId, verb: Verb, icon: string, label: string, cost: number, extra: Partial<Action> = {}): Action {
+  if (!hasTool(state, tool)) return off(target, verb, icon, label, ICON.lock, { needLevel: TOOL_LEVEL[tool], ...extra });
+  return act(state, target, verb, icon, label, cost, extra);
+}
+
+/** Calm, damp-enough days are "in prescription" for a controlled burn. */
+function burnAction(state: GameState, target: Target, tx: number, ty: number): Action[] {
+  if (!hasTool(state, 'torch')) return [];
+  if (isBurning(state, tx, ty)) return [];
+  // Raked, soaked or freshly burned ground has nothing to carry a flame.
+  if (fuelAt(state, tx, ty) < 0.06) return [off(target, 'ignite', ICON.torch, 'Prescribed burn', ICON.bang)];
+  const ok = burnPrescription(state, tx, ty, WEATHER[state.weather.kind].burnOk);
+  if (ok === 'young') return [off(target, 'ignite', ICON.torch, 'Prescribed burn', ICON.wait)];
+  if (ok === 'weather') return [off(target, 'ignite', ICON.torch, 'Prescribed burn', WEATHER[state.weather.kind].icon)];
+  return [act(state, target, 'ignite', ICON.torch, 'Prescribed burn', 3)];
+}
+
+export function seedYield(state: GameState, e: NativePlantEntity): number {
+  let n = SEED_YIELD[e.species];
+  if (e.species === 'palmetto' && (e.bloomUntil ?? 0) >= state.day) n *= 2;
+  if (e.species === 'oak' && calendar(state.day).season === 'fall') n += 2; // the fall acorn crop
+  if (hasPerk(state, 7)) n += 1;
+  return n;
+}
+
+export function captureCost(state: GameState, species: keyof typeof INVASIVE_ANIMALS): number {
+  // Cold-stunned iguanas are easy to scoop up.
+  return species === 'iguana' && state.weather.kind === 'cold' ? 2 : INVASIVE_ANIMALS[species].cost;
+}
+
+function pushBag(state: GameState, items: BagItem[]): void {
+  state.bagItems = [...(state.bagItems ?? []), ...items].slice(-BAG_CAPACITY);
+}
 
 function speciesOf(e: Entity): SpeciesId | null {
   return e.kind === 'burrow' ? null : e.species;
@@ -166,7 +232,8 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
         ? off(target, 'remove', VERB_ICON[e.species], stats.verb, ICON.bag)
         : act(state, target, 'remove', VERB_ICON[e.species], stats.verb, stats.cost);
       if (e.species === 'airpotato') { a.label = 'Untangle vines'; a.icon = ICON.cut; }
-      return [a, ...info];
+      const dig = e.species === 'cogon' ? [tool(state, target, 'probe', 'dig', ICON.dig, 'Dig out roots', 5)] : [];
+      return [a, ...dig, ...info, ...burnAction(state, target, e.tx, e.ty)];
     }
     case 'hazard': {
       const stats = HAZARDS[e.species];
@@ -174,7 +241,9 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
       const a = full
         ? off(target, 'remove', VERB_ICON[e.species], stats.verb, ICON.bag)
         : act(state, target, 'remove', VERB_ICON[e.species], stats.verb, stats.cost);
-      return [a, ...info];
+      if (e.species !== 'thicket') return [a, ...info];
+      const burn = hasTool(state, 'torch') ? burnAction(state, target, e.tx, e.ty) : [off(target, 'ignite', ICON.torch, 'Prescribed burn', ICON.lock, { needLevel: TOOL_LEVEL.torch })];
+      return [a, ...burn, ...info];
     }
     case 'nativePlant': {
       const tex = e.species;
@@ -186,7 +255,7 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
         })] : [];
         return [...rescue, off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.sad, { tex }), ...info];
       }
-      if (e.planted && state.day - e.plantedDay < 2) {
+      if (isRegrowing(state, e)) {
         return [off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.wait, { tex }), ...info];
       }
       const seeds =
@@ -197,7 +266,7 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
         (e.lastSprigDay ?? 0) === state.day
           ? off(target, 'snip', ICON.sprig, 'Snip a sprig', ICON.done)
           : act(state, target, 'snip', ICON.sprig, 'Snip a sprig', 1);
-      return [seeds, sprig, ...info];
+      return [seeds, sprig, ...info, ...burnAction(state, target, e.tx, e.ty)];
     }
     case 'invasiveAnimal': {
       const meta = INVASIVE_ANIMALS[e.species];
@@ -206,14 +275,26 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
         meta.container === 'crate' ? state.crate !== null : state.jar >= JAR_CAPACITY;
       const a = blocked
         ? off(target, 'capture', icon, 'Capture', meta.container === 'crate' ? ICON.crate : ICON.jar)
-        : act(state, target, 'capture', icon, 'Capture', meta.cost);
+        : act(state, target, 'capture', icon, 'Capture', captureCost(state, e.species));
       return [a, ...info];
     }
     case 'nativeAnimal':
-      return [act(state, target, 'greet', ICON.greet, 'Say hi', 0), ...info];
-    case 'burrow':
-      return [];
+      return [act(state, target, 'greet', ICON.greet, 'Say hi', 0), tool(state, target, 'camera', 'photo', ICON.camera, 'Take a portrait', 1, { tex: e.species }), ...info];
+    case 'burrow': {
+      const peeked = e.scopedDay === state.day;
+      const scope = hasTool(state, 'scope') && peeked
+        ? off(target, 'scope', ICON.scope, 'Burrow scope', ICON.done)
+        : tool(state, target, 'scope', 'scope', ICON.scope, 'Burrow scope', 2);
+      return [scope, act(state, target, 'info', ICON.info, 'Field guide', 0, { param: 'tortoise' })];
+    }
   }
+}
+
+function fireActions(state: GameState, target: Target): Action[] {
+  const water = state.water > 0
+    ? act(state, target, 'contain', ICON.douse, 'Contain the fire', 0)
+    : off(target, 'contain', ICON.douse, 'Contain the fire', ICON.tank);
+  return [water, act(state, target, 'watchFire', ICON.eye, 'Let it burn', 0), act(state, target, 'info', ICON.info, 'Field guide', 0, { param: 'fire' })];
 }
 
 function stationActions(state: GameState, st: Station, target: Target): Action[] {
@@ -222,7 +303,7 @@ function stationActions(state: GameState, st: Station, target: Target): Action[]
       return [act(state, target, 'enter', ICON.enter, 'Go inside', 0)];
     case 'recycler':
       return state.bag > 0
-        ? [act(state, target, 'recycle', ICON.recycle, 'Recycle', 0)]
+        ? [act(state, target, 'recycle', ICON.recycle, 'Recycle', 0), state.bag >= 2 ? act(state, target, 'sort', ICON.sort, 'Sort for a bonus', 0) : off(target, 'sort', ICON.sort, 'Sort for a bonus', ICON.bag)]
         : [off(target, 'recycle', ICON.recycle, 'Recycle', ICON.bag)];
     case 'pad':
       return state.crate || state.jar > 0
@@ -236,6 +317,7 @@ const UPGRADE_ICON: Record<UpgradeId, string> = {
   slots: ICON.slots,
   vase: ICON.vase,
   room: ICON.room,
+  tank: ICON.tank,
 };
 
 function homeActions(state: GameState, item: HomeItem, target: Target): Action[] {
@@ -251,13 +333,13 @@ function homeActions(state: GameState, item: HomeItem, target: Target): Action[]
     case 'window':
       return [];
     case 'bench':
-      return (['battery', 'slots', 'vase', 'room'] as UpgradeId[]).map((id) => {
+      return (['battery', 'slots', 'vase', 'room', 'tank'] as UpgradeId[]).map((id) => {
         const st = upgradeStatus(state, id);
         const block = st.block === 'parts' ? ICON.parts : st.block === 'max' ? ICON.done : st.block === 'milestone' ? ICON.lock : undefined;
         return {
           verb: 'upgrade' as const,
           icon: UPGRADE_ICON[id],
-          label: `Upgrade ${id}`,
+          label: id === 'tank' ? 'Bigger water tank' : `Upgrade ${id}`,
           cost: 0,
           parts: UPGRADE_COST[id],
           enabled: st.ok,
@@ -321,12 +403,16 @@ export function getActions(state: GameState, target: Target): Action[] {
       return homeActions(state, target.item, target);
     case 'self':
       return selfActions(state, target.spot, target);
+    case 'fire':
+      return fireActions(state, target);
   }
 }
 
+export { isRegrowing };
+
 // --- doing it ------------------------------------------------------------------------
 
-function result(partial: Partial<ActionResult>): ActionResult {
+export function result(partial: Partial<ActionResult>): ActionResult {
   return { ok: true, fx: 'none', gains: [], rescued: [], ...partial };
 }
 
@@ -338,12 +424,57 @@ function targetPos(t: Target): { x: number; y: number } | undefined {
       return tileCenter(t.station.tx, t.station.ty);
     case 'self':
       return t.spot ? tileCenter(t.spot.tx, t.spot.ty) : undefined;
+    case 'fire':
+      return tileCenter(t.tx, t.ty);
     case 'home':
       return undefined;
   }
 }
 
+/** Fold care credit (care points, goals, levels) into an action's result. */
+export function withCredit(res: ActionResult, state: GameState, events: [CareEvent, number?, number?][]): ActionResult {
+  for (const [ev, n, xp] of events) {
+    const c: Credit = credit(state, ev, n ?? 1, xp);
+    res.xp = (res.xp ?? 0) + c.xp;
+    res.levelUps = [...(res.levelUps ?? []), ...c.levelUps];
+    res.tasks = [...(res.tasks ?? []), ...c.tasks];
+    res.allDone ||= c.allDone;
+  }
+  return res;
+}
+
 export function performAction(state: GameState, a: Action): ActionResult {
+  const res = performCore(state, a);
+  if (!res.ok) return res;
+  const t = a.target;
+  const e = t.type === 'entity' ? t.entity : null;
+  const events: [CareEvent, number?][] = [];
+  switch (a.verb) {
+    case 'scan': events.push(['scan']); break;
+    case 'remove':
+    case 'rescue':
+      if (res.fx === 'pop' && e) {
+        const species = a.verb === 'rescue' ? 'airpotato' : 'species' in e ? e.species : '';
+        events.push([species === 'thicket' ? 'thicket' : e.kind === 'hazard' && a.verb === 'remove' ? 'trash' : 'clear']);
+      }
+      if (res.rescued.length) events.push(['rescue', res.rescued.length]);
+      break;
+    case 'collect': events.push(['seeds']); break;
+    case 'snip': events.push(['sprig']); break;
+    case 'capture': events.push(['capture']); break;
+    case 'greet': if (res.gains.length) events.push(['greet']); break;
+    case 'recycle': events.push(['recycle', Math.max(1, res.gains[0]?.n ?? 1)]); break;
+    case 'plant': events.push(['plant']); break;
+    case 'sow': events.push(['sow']); break;
+    case 'water': events.push(['water']); break;
+    case 'pot': events.push(['pot']); break;
+    case 'ignite': events.push(['prescribe']); break;
+    default: break;
+  }
+  return events.length ? withCredit(res, state, events) : res;
+}
+
+function performCore(state: GameState, a: Action): ActionResult {
   if (!a.enabled) return result({ ok: false, mood: 'sad' });
   const targetEntity = a.target.type === 'entity' ? a.target.entity : null;
   if (targetEntity && !state.entities.some(e => e.id === targetEntity.id)) return result({ ok: false });
@@ -352,6 +483,7 @@ export function performAction(state: GameState, a: Action): ActionResult {
     if (!workEntity.care || careStage(workEntity.care) !== 'done' || state.bag + INVASIVE_PLANTS.airpotato.bulbils > BAG_CAPACITY) return result({ ok: false });
   }
   if (a.verb === 'rescue' && !workEntity) return result({ ok: false });
+  if (a.verb === 'ignite' && !(targetEntity && 'tx' in targetEntity && fuelAt(state, targetEntity.tx, targetEntity.ty) >= 0.06)) return result({ ok: false, mood: 'sad' });
   if (!spend(state, a.cost)) return result({ ok: false, mood: 'sad' });
 
   const t = a.target;
@@ -368,7 +500,7 @@ export function performAction(state: GameState, a: Action): ActionResult {
     }
 
     case 'info': {
-      const species = entity ? speciesOf(entity) : null;
+      const species = a.param ? (a.param as SpeciesId) : entity ? speciesOf(entity) : null;
       return result({ open: 'guide', guideId: species ?? undefined });
     }
 
@@ -384,13 +516,17 @@ export function performAction(state: GameState, a: Action): ActionResult {
         const bulbils = INVASIVE_PLANTS[entity.species].bulbils;
         if (bulbils > 0) {
           state.bag = Math.min(BAG_CAPACITY, state.bag + bulbils);
+          pushBag(state, Array.from({ length: bulbils }, () => 'bulbil' as const));
           gains.push({ icon: ICON.bag, n: bulbils });
         }
+        // Hand-pulled cogon leaves runners in the sand that may sprout again.
+        if (entity.species === 'cogon') state.seedbank.push({ tx: entity.tx, ty: entity.ty, species: 'cogon', day: state.day + 1, chance: 0.2 });
       } else {
         const trash = HAZARDS[entity.species].trash;
         if (trash > 0) {
           state.bag = Math.min(BAG_CAPACITY, state.bag + trash);
           state.stats.trashCollected += trash;
+          if (entity.species !== 'thicket') pushBag(state, [entity.species]);
           gains.push({ icon: ICON.bag, n: trash });
         }
       }
@@ -402,7 +538,7 @@ export function performAction(state: GameState, a: Action): ActionResult {
 
     case 'collect': {
       if (entity?.kind !== 'nativePlant') return result({ ok: false });
-      const n = SEED_YIELD[entity.species];
+      const n = seedYield(state, entity);
       state.seeds[entity.species] += n;
       entity.lastSeedDay = state.day;
       return result({ fx: 'sparkle', at, gains: [{ icon: ICON.seeds, tex: entity.species, n }], mood: 'happy' });
@@ -449,8 +585,37 @@ export function performAction(state: GameState, a: Action): ActionResult {
       const n = state.bag;
       state.parts += n;
       state.bag = 0;
+      state.bagItems = [];
       return result({ fx: 'sparkle', at, gains: [{ icon: ICON.parts, n }], mood: 'proud' });
     }
+
+    case 'sort':
+      return result({ play: 'sort' });
+
+    case 'contain':
+      return result({ play: 'fireLine' });
+
+    case 'watchFire': {
+      const fire = t.type === 'fire' ? fireState(fuelAge(state, t.tx, t.ty)) : 'ready';
+      return result({ mood: FIRE_STATE_INFO[fire].good ? 'happy' : 'surprise', note: FIRE_STATE_INFO[fire].good ? 'The robot steps back. This old scrub has waited a long time for fire.' : 'Careful: this ground burned recently. Young sprouts may be lost.' });
+    }
+
+    case 'ignite': {
+      const tile = entity && 'tx' in entity ? { tx: entity.tx, ty: entity.ty } : null;
+      if (!tile || !ignite(state, tile.tx, tile.ty)) return result({ ok: false, mood: 'sad' });
+      refreshRescues(state);
+      return result({ fx: 'pop', at, mood: 'surprise', fireAt: tile, note: 'A small, careful flame. Watch it creep through the old fuel.' });
+    }
+
+    case 'photo':
+      return result({ play: 'photo' });
+
+    case 'dig':
+      return result({ play: 'dig' });
+
+    case 'scope':
+      if (entity?.kind === 'burrow') entity.scopedDay = state.day;
+      return result({ play: 'scope' });
 
     case 'dropoff': {
       const gains: Gain[] = [];

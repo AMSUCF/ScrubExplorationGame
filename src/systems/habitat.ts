@@ -1,7 +1,8 @@
 // Habitat health, invasive spread, and the conditions that bring native wildlife home.
-import { COGON_MAX_SPREAD_PER_NIGHT, COGON_SPREAD_CHANCE, MAP_H, MAP_W } from '../config';
+import { COGON_MAX_SPREAD_PER_NIGHT, COGON_SOFT_CAP, COGON_SPREAD_CHANCE, MAP_H, MAP_W } from '../config';
 import { ZoneId, inBounds, tileCenter, zoneAt } from '../data/map';
 import { INVASIVE_PLANTS, NativeAnimalId } from '../data/species';
+import { overdueFraction } from './fire';
 import { Rng, pick } from './rng';
 import {
   BurrowEntity,
@@ -42,6 +43,8 @@ export function zoneHealth(state: GameState, zone: ZoneId): number {
         break;
     }
   }
+  // Scrub that has gone too long without fire grows tall and closed; open-sand wildlife suffers.
+  if (zone !== 'base') bad += overdueFraction(state, zone) * 3;
   return Math.max(0, Math.min(100, Math.round((100 * good) / (good + bad))));
 }
 
@@ -99,14 +102,15 @@ const NEIGHBOURS = [
 ];
 
 /** Cogon creeps into neighbouring ground overnight. Returns how many new patches appeared. */
-export function spreadCogon(state: GameState, rng: Rng): number {
+export function spreadCogon(state: GameState, rng: Rng, boost = 1): number {
   const cogon = state.entities.filter(
     (e): e is InvasivePlantEntity => e.kind === 'invasivePlant' && e.species === 'cogon',
   );
   let spawned = 0;
+  if (cogon.length >= COGON_SOFT_CAP) return 0;
   for (const c of cogon) {
-    if (spawned >= COGON_MAX_SPREAD_PER_NIGHT) break;
-    if (rng() >= COGON_SPREAD_CHANCE) continue;
+    if (spawned >= Math.round(COGON_MAX_SPREAD_PER_NIGHT * boost)) break;
+    if (rng() >= COGON_SPREAD_CHANCE * boost) continue;
     const [dx, dy] = pick(rng, NEIGHBOURS);
     const tx = c.tx + dx;
     const ty = c.ty + dy;

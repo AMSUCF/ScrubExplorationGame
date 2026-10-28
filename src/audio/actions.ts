@@ -12,6 +12,9 @@ const REMOVE_SOUND: Record<string, SfxName> = {
   bottle: 'pickup',
   fence: 'pickup',
   thicket: 'trim',
+  balloon: 'pickup',
+  plastic: 'pickup',
+  can: 'pickup',
 };
 
 const SIMPLE: Partial<Record<Action['verb'], SfxName>> = {
@@ -30,6 +33,11 @@ const SIMPLE: Partial<Record<Action['verb'], SfxName>> = {
   board: 'page',
   monitor: 'click',
   plant: 'plant',
+  scope: 'scope',
+  dig: 'dig',
+  sort: 'open',
+  photo: 'click',
+  contain: 'open',
 };
 
 /** `hpBefore` lets multi-hit removals (pepper, fence, thicket) thwack until the last blow. */

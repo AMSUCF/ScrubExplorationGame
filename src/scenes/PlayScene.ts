@@ -2,12 +2,24 @@
 // keyboard support, wordless feedback, and saving. Subclasses describe their space and objects.
 import Phaser from 'phaser';
 import { BATTERY_DRIVE_DRAIN, REACH, TILE } from '../config';
-import { ZoneId } from '../data/map';
+import { ZoneId, tileCenter } from '../data/map';
 import { audio } from '../audio';
 import { playActionSound } from '../audio/actions';
 import { Robot, floatIcon } from '../entities/Robot';
 import { services } from '../services';
-import { Action, ActionResult, Target, getActions, performAction } from '../systems/actions';
+import { ICON } from '../data/icons';
+import { Action, ActionResult, Minigame, Target, getActions, performAction, result, withCredit } from '../systems/actions';
+import { CareEvent } from '../systems/progress';
+import { logGuests, planBurrow } from '../systems/minigames/burrowScope';
+import { digOut } from '../systems/minigames/rhizome';
+import { recordPortrait } from '../systems/minigames/portrait';
+import { bagContents, finishSort } from '../systems/minigames/sorting';
+import { WEATHER } from '../systems/weather';
+import { showBurrowScope } from '../ui/minigames/burrowScope';
+import { showFireLine } from '../ui/minigames/fireLine';
+import { showPortrait } from '../ui/minigames/portrait';
+import { showRhizomeDig } from '../ui/minigames/rhizome';
+import { showSorting } from '../ui/minigames/sorting';
 import { drain } from '../systems/battery';
 import { Grid, Tile, findPath } from '../systems/pathfind';
 import { clearSave, saveGame } from '../systems/save';
@@ -16,7 +28,7 @@ import { vineHost } from '../data/visuals';
 import { showVineCare } from '../ui/vineCare';
 import { targetInfo } from '../ui/targetInfo';
 import { keyVector, setKeyHandlers } from '../ui/input';
-import { isOverlayOpen, showBoard, showDiscovery, showFieldGuide, showMenu, showMonitor } from '../ui/overlays';
+import { isOverlayOpen, showBoard, showDiscovery, showFieldGuide, showLevelUp, showMenu, showMonitor } from '../ui/overlays';
 import { RadialMenu } from '../ui/radial';
 
 export interface Interactable {
@@ -44,7 +56,7 @@ export abstract class PlayScene extends Phaser.Scene {
   private hoverRing!: Phaser.GameObjects.Graphics;
   private hovered: Interactable | null = null;
   private saveTimer: number | null = null;
-  private down: { x: number; y: number; steering: boolean } | null = null;
+  protected down: { x: number; y: number; steering: boolean } | null = null;
 
   // --- what subclasses provide -------------------------------------------------------------
   protected abstract grid(): Grid;
@@ -253,13 +265,17 @@ export abstract class PlayScene extends Phaser.Scene {
   }
 
   /** Live interactable for the current menu target (animals move; entities may be gone). */
-  private liveMenuTarget(): Interactable | null {
+  protected liveMenuTarget(): Interactable | null {
     const mt = this.menuTarget;
     if (!mt) return null;
     if (mt.target.type === 'self') return this.selfInteractable();
     if (mt.target.type === 'entity') {
       const id = mt.target.entity.id;
       return this.interactables().find((i) => i.target.type === 'entity' && i.target.entity.id === id) ?? null;
+    }
+    if (mt.target.type === 'fire') {
+      const { tx, ty } = mt.target;
+      return this.interactables().find((i) => i.target.type === 'fire' && i.target.tx === tx && i.target.ty === ty) ?? null;
     }
     return mt;
   }
@@ -278,7 +294,7 @@ export abstract class PlayScene extends Phaser.Scene {
     if (this.busy || isOverlayOpen()) return;
     const it = this.liveMenuTarget();
     if (!it) return this.closeMenu();
-    const instant = a.verb === 'info' || a.verb === 'goHome' || a.verb === 'board' || a.verb === 'monitor';
+    const instant = a.verb === 'info' || a.verb === 'goHome' || a.verb === 'board' || a.verb === 'monitor' || a.verb === 'watchFire';
     if (instant || this.inReach(it)) {
       void this.perform(a, it);
     } else {
@@ -346,6 +362,11 @@ export abstract class PlayScene extends Phaser.Scene {
     }
     this.refreshViews();
     this.saveSoon();
+    await this.celebrate(res);
+    if (res.play) {
+      await this.runMinigame(res.play, fresh);
+      return;
+    }
 
     if (res.scanned) {
       services.unseenGuide++;
@@ -370,6 +391,94 @@ export abstract class PlayScene extends Phaser.Scene {
 
   /** Overridden outdoors: drive back to the pod. */
   protected goHome(): void {}
+
+  /** Play a close-up activity, then apply its outcome to the world. */
+  protected async runMinigame(kind: Minigame, a: Action): Promise<void> {
+    this.busy = true;
+    this.robot.stop();
+    this.down = null;
+    this.menu.hide();
+    const s = this.state;
+    const t = a.target;
+    const e = t.type === 'entity' ? t.entity : null;
+    let out: ActionResult | null = null;
+    try {
+      switch (kind) {
+        case 'photo': {
+          if (e?.kind !== 'nativeAnimal') break;
+          const shot = await showPortrait(e.species, e.id);
+          const rec = recordPortrait(s, e.species, shot.stars);
+          out = result({ fx: shot.stars ? 'sparkle' : 'none', at: { x: e.x, y: e.y - 10 }, mood: shot.stars >= 2 ? 'love' : 'happy', gains: rec.reward ? [{ icon: ICON.parts, n: rec.reward }] : [] });
+          out.note = shot.stars === 0 ? undefined : rec.improved ? `A ${shot.stars}-star portrait, pinned to your corkboard.` : `Nice shot! Your best is still ${rec.best} stars.`;
+          withCredit(out, s, [['photo', shot.stars >= 2 ? 1 : 0, shot.stars * 3]]);
+          break;
+        }
+        case 'dig': {
+          if (e?.kind !== 'invasivePlant') break;
+          const dig = await showRhizomeDig(e.id * 7919 + s.day);
+          const { removed, rescued } = digOut(s, e, dig.complete);
+          out = result({ fx: 'pop', at: tileCenter(e.tx, e.ty), rescued, mood: dig.complete ? 'proud' : 'happy', note: dig.complete ? `Roots and all! ${removed} clump${removed === 1 ? '' : 's'} lifted for good.` : 'Clump lifted. A few runners stayed behind.' });
+          const events: [CareEvent, number?, number?][] = [['dig', 1, 4 + dig.stars * 3], ['clear', removed]];
+          if (rescued.length) events.push(['rescue', rescued.length]);
+          withCredit(out, s, events);
+          break;
+        }
+        case 'scope': {
+          if (e?.kind !== 'burrow') break;
+          const { seen } = await showBurrowScope(planBurrow(s, e));
+          const { fresh, parts } = logGuests(s, seen);
+          services.unseenGuide += fresh.length;
+          out = result({ fx: 'sparkle', mood: fresh.length ? 'surprise' : 'happy', gains: parts ? [{ icon: ICON.parts, n: parts }] : [], note: fresh.length ? `New in your field guide: ${fresh.length} burrow neighbor${fresh.length === 1 ? '' : 's'}!` : seen.length ? 'Everyone is snug and safe down there.' : undefined });
+          withCredit(out, s, [['scope', 1, 4 + seen.length * 2]]);
+          break;
+        }
+        case 'sort': {
+          const placed = await showSorting(bagContents(s));
+          const sorted = finishSort(s, placed);
+          out = result({ fx: 'sparkle', mood: 'proud', gains: [{ icon: ICON.parts, n: sorted.parts }], note: sorted.bonus ? `Careful sorting: +${sorted.bonus} bonus part${sorted.bonus === 1 ? '' : 's'}.` : undefined });
+          withCredit(out, s, [['sort', 1, sorted.correct], ['recycle', sorted.total]]);
+          break;
+        }
+        case 'fireLine': {
+          if (t.type !== 'fire') break;
+          const line = await showFireLine(s, { tx: t.tx, ty: t.ty });
+          if (line.contained) {
+            s.fireToday.contained++;
+            s.stats.contained = (s.stats.contained ?? 0) + 1;
+            out = result({ mood: 'proud', note: line.lost ? `Fire contained. ${line.lost} young plant${line.lost === 1 ? ' was' : 's were'} lost.` : 'Fire contained, and every native in reach is safe.' });
+            withCredit(out, s, [['contain', 1, 6 + line.stars * 3]]);
+          } else {
+            out = result({ mood: 'surprise', note: 'The fire is still moving. Let it run, or try again from another side.' });
+          }
+          break;
+        }
+      }
+    } finally {
+      this.busy = false;
+    }
+    if (!out) return;
+    this.feedback(out);
+    this.refreshViews();
+    this.saveSoon();
+    await this.celebrate(out);
+    const live = this.liveMenuTarget();
+    if (!live) this.closeMenu();
+    else this.openMenu(live);
+  }
+
+  /** Goals finished, care points, and new levels. */
+  protected async celebrate(res: ActionResult): Promise<void> {
+    if (res.xp && res.xp > 0) {
+      this.time.delayedCall(res.gains.length * 180 + 120, () => floatIcon(this, this.robot.x + 4, this.robot.y - 34, `+${res.xp}${ICON.level}`));
+    }
+    const done = res.tasks ?? [];
+    if (done.length) {
+      audio.sfx('task', { delay: 0.2 });
+      const goals = done.map((t) => `${t.label} (+${t.reward} parts)`).join(' · ');
+      services.hud?.toast(res.allDone ? `All of today’s goals done! ${goals} · +2 bonus parts` : `Goal complete: ${goals}`);
+    }
+    if (res.levelUps?.length) await showLevelUp(res.levelUps);
+  }
 
   protected feedback(res: ActionResult): void {
     if (res.note) services.hud?.toast(res.note);
@@ -454,7 +563,9 @@ export abstract class PlayScene extends Phaser.Scene {
     const keys = this.busy ? { x: 0, y: 0 } : keyVector();
     const mag = this.robot.update(dt, keys, this.robotSpeed(), !!this.state.crate);
     audio.motor(mag);
-    if (mag > 0.05) drain(this.state, (BATTERY_DRIVE_DRAIN * mag * dt) / 1000);
+    // Hot days drain the battery faster outdoors.
+    const weather = this.state.location === 'outside' ? WEATHER[this.state.weather.kind].drain : 1;
+    if (mag > 0.05) drain(this.state, (BATTERY_DRIVE_DRAIN * mag * dt * weather) / 1000);
 
     if (this.menu.open) {
       if (!this.liveMenuTarget()) this.closeMenu();

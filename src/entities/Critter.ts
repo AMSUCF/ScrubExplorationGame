@@ -12,6 +12,9 @@ export class Critter {
   private wait: number;
   private readonly speed: number;
   private t = Math.random() * 1000;
+  /** Cold-stunned (iguanas in a cold snap): stays put. */
+  frozen = false;
+  private hurry = 1;
 
   constructor(
     readonly entity: AnimalEntity,
@@ -25,6 +28,7 @@ export class Critter {
   }
 
   private pickTarget(): void {
+    this.hurry = 1;
     const range = this.entity.species === 'anole' ? 70 : 110;
     for (let i = 0; i < 6; i++) {
       const x = Phaser.Math.Clamp(this.sprite.x + (Math.random() - 0.5) * 2 * range, TILE * 1.5, WORLD_W - TILE * 1.5);
@@ -37,14 +41,31 @@ export class Critter {
     this.target = null;
   }
 
+  /** Scurry away from a flame (or anything startling), quickly and without regard for zones. */
+  flee(fromX: number, fromY: number): void {
+    const dx = this.sprite.x - fromX, dy = this.sprite.y - fromY;
+    const d = Math.hypot(dx, dy) || 1;
+    this.target = {
+      x: Phaser.Math.Clamp(this.sprite.x + (dx / d) * 140, TILE * 1.5, WORLD_W - TILE * 1.5),
+      y: Phaser.Math.Clamp(this.sprite.y + (dy / d) * 140, TILE * 1.5, WORLD_H - TILE * 1.5),
+    };
+    this.wait = 0;
+    this.hurry = 3;
+  }
+
   greet(fromX: number): void {
     this.target = null;
+    this.hurry = 1;
     this.wait = 3800;
     this.sprite.setFlipX(fromX < this.sprite.x).setAngle(0);
   }
 
   update(dtMs: number): void {
     this.t += dtMs;
+    if (this.frozen) {
+      this.sprite.setAngle(0);
+      return;
+    }
     if (this.wait > 0) {
       this.wait -= dtMs;
       if (this.wait <= 0) this.pickTarget();
@@ -58,10 +79,11 @@ export class Critter {
     const dx = this.target.x - this.sprite.x;
     const dy = this.target.y - this.sprite.y;
     const dist = Math.hypot(dx, dy);
-    const step = (this.speed * dtMs) / 1000;
+    const step = (this.speed * this.hurry * dtMs) / 1000;
     if (dist <= step) {
       this.sprite.setPosition(this.target.x, this.target.y);
       this.target = null;
+      this.hurry = 1;
       const lazy = this.entity.species === 'cat' || this.entity.species === 'tortoise';
       this.wait = (lazy ? 2500 : 900) + Math.random() * 2500;
     } else {

@@ -35,6 +35,13 @@ export class Ambience {
   private filter: BiquadFilterNode;
   private cicadaGain: GainNode;
   private windGain: GainNode;
+  private windDepth: GainNode;
+  private rainGain: GainNode;
+  private roarGain: GainNode;
+  private fireLevel = 0;
+  private nextCrackle = 0;
+  /** Cicadas hush in rain and cold. */
+  private cicadaScale = 1;
   private timer: number | null = null;
   private mode: AmbienceMode = 'off';
   private dusk = 0;
@@ -91,10 +98,52 @@ export class Ambience {
     gust.frequency.value = 0.09;
     const gustDepth = ctx.createGain();
     gustDepth.gain.value = 0.035;
+    this.windDepth = gustDepth;
     gust.connect(gustDepth).connect(this.windGain.gain);
     wind.connect(windLp).connect(this.windGain).connect(this.gain);
 
-    for (const n of [cicada, buzzLfo, swell, wind, gust]) n.start();
+    // Rain: a soft hiss of drops on sand and leaves.
+    const rain = ctx.createBufferSource();
+    rain.buffer = s.noiseBuffer();
+    rain.loop = true;
+    const rainHp = ctx.createBiquadFilter();
+    rainHp.type = 'highpass';
+    rainHp.frequency.value = 900;
+    const rainLp = ctx.createBiquadFilter();
+    rainLp.type = 'lowpass';
+    rainLp.frequency.value = 6500;
+    this.rainGain = ctx.createGain();
+    this.rainGain.gain.value = 0;
+    rain.connect(rainHp).connect(rainLp).connect(this.rainGain).connect(this.gain);
+
+    // Fire: a low roar under the crackles (crackles are scheduled in tick()).
+    const roar = ctx.createBufferSource();
+    roar.buffer = s.noiseBuffer();
+    roar.loop = true;
+    const roarLp = ctx.createBiquadFilter();
+    roarLp.type = 'lowpass';
+    roarLp.frequency.value = 320;
+    this.roarGain = ctx.createGain();
+    this.roarGain.gain.value = 0;
+    roar.connect(roarLp).connect(this.roarGain).connect(this.gain);
+
+    for (const n of [cicada, buzzLfo, swell, wind, gust, rain, roar]) n.start();
+  }
+
+  /** Rain intensity (0..1), wind speed (0..1), and whether insects sing. */
+  setWeather(rain: number, wind: number, insects: number): void {
+    const now = this.ctx.currentTime;
+    this.rainGain.gain.setTargetAtTime(rain * 0.07, now, 1);
+    this.windGain.gain.setTargetAtTime(0.03 + wind * 0.11, now, 1);
+    this.windDepth.gain.setTargetAtTime(0.02 + wind * 0.07, now, 1);
+    this.cicadaScale = insects;
+    this.setDusk(this.dusk);
+  }
+
+  /** 0 (no fire) .. 1 (standing right beside a big fire). */
+  setFire(level: number): void {
+    this.fireLevel = level;
+    this.roarGain.gain.setTargetAtTime(level * 0.06, this.ctx.currentTime, 0.4);
   }
 
   setMode(mode: AmbienceMode): void {
@@ -113,7 +162,7 @@ export class Ambience {
   /** 0 = bright day, 1 = dusk: cicadas fade, crickets rise. */
   setDusk(d: number): void {
     this.dusk = d;
-    this.cicadaGain.gain.setTargetAtTime(0.02 * (1 - d * 0.8), this.ctx.currentTime, 1);
+    this.cicadaGain.gain.setTargetAtTime(0.02 * (1 - d * 0.8) * this.cicadaScale, this.ctx.currentTime, 1);
   }
 
   private tick(): void {
@@ -132,6 +181,13 @@ export class Ambience {
         birdCall(new Synth(this.ctx, this.gain, now + 0.05), bird, 0.022 * (1 - this.dusk * 0.6), Math.random() * 1.6 - 0.8);
       }
       this.nextBird = now + 7 + Math.random() * 10;
+    }
+    if (this.mode === 'day' && this.fireLevel > 0.02 && now > this.nextCrackle) {
+      const s = new Synth(this.ctx, this.gain, now + 0.02);
+      for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) {
+        s.noise({ at: Math.random() * 0.12, dur: 0.012, vol: 0.05 * this.fireLevel, pan: Math.random() * 1.2 - 0.6, filter: { type: 'highpass', freq: 2200 + Math.random() * 3000 } });
+      }
+      this.nextCrackle = now + 0.05 + Math.random() * 0.25 / Math.max(0.2, this.fireLevel);
     }
     if (this.mode === 'home' && now > this.nextBubble) {
       // Hydroponic jars bubbling softly.

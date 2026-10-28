@@ -3,13 +3,18 @@
 
 export type InvasivePlantId = 'cogon' | 'pepper' | 'airpotato' | 'natal';
 export type NativePlantId = 'palmetto' | 'rosemary' | 'oak' | 'hickory';
-export type HazardId = 'tire' | 'bottle' | 'fence' | 'thicket';
+export type HazardId = 'tire' | 'bottle' | 'fence' | 'thicket' | 'balloon' | 'plastic' | 'can';
 export type InvasiveAnimalId = 'cat' | 'tegu' | 'iguana' | 'anole';
 export type NativeAnimalId = 'tortoise' | 'mouse' | 'jay' | 'indigo';
+/** Small neighbours met only through the burrow scope. */
+export type GuestId = 'frog' | 'beetle' | 'cricket';
+/** Forces that shape the scrub: written up in the guide, never tapped as things. */
+export type ForceId = 'fire' | 'storm' | 'edge';
+export type TrashId = Exclude<HazardId, 'fence' | 'thicket'>;
 
-export type SpeciesId = InvasivePlantId | NativePlantId | HazardId | InvasiveAnimalId | NativeAnimalId;
+export type SpeciesId = InvasivePlantId | NativePlantId | HazardId | InvasiveAnimalId | NativeAnimalId | GuestId | ForceId;
 
-export type Category = 'invasivePlant' | 'nativePlant' | 'hazard' | 'invasiveAnimal' | 'nativeAnimal';
+export type Category = 'invasivePlant' | 'nativePlant' | 'hazard' | 'invasiveAnimal' | 'nativeAnimal' | 'burrowGuest' | 'scrubForce';
 
 export interface GuideEntry {
   id: SpeciesId;
@@ -29,6 +34,8 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   hazard: 'Hazards',
   invasiveAnimal: 'Invasive animals',
   nativeAnimal: 'Native wildlife',
+  burrowGuest: 'Burrow neighbors',
+  scrubForce: 'Forces of the scrub',
 };
 
 export const GUIDE: GuideEntry[] = [
@@ -173,7 +180,37 @@ export const GUIDE: GuideEntry[] = [
       'Without fire, scrub grows tall and tangled, and open-sand animals lose their homes.',
       'Today, trained crews use careful "prescribed burns" to keep scrub healthy.',
     ],
-    helped: 'Trimming overgrowth keeps the scrub low and open, the way scrub-jays like it.',
+    helped: 'Trimming overgrowth keeps the scrub low and open. A good fire renews it even better.',
+  },
+  {
+    id: 'balloon',
+    name: 'Stray balloon',
+    category: 'hazard',
+    facts: [
+      'Released balloons can float hundreds of miles before they come down in wild places.',
+      'Animals can mistake the shiny pieces for food or get tangled in the ribbon.',
+    ],
+    helped: 'Storms carry litter in from roads and yards. Every piece you gather keeps the scrub safer.',
+  },
+  {
+    id: 'plastic',
+    name: 'Plastic bag',
+    category: 'hazard',
+    facts: [
+      'Plastic bags blow for miles and snag on shrubs like little flags.',
+      'Tortoises and birds can mistake soft plastic for food.',
+    ],
+    helped: 'Bring it to the recycler and sort it with the other plastics.',
+  },
+  {
+    id: 'can',
+    name: 'Soda can',
+    category: 'hazard',
+    facts: [
+      'Aluminum can be recycled again and again, forever.',
+      'A recycled can can be back on a store shelf in about two months.',
+    ],
+    helped: 'Metal goes in its own bin at the recycler.',
   },
 
   // --- Invasive animals ------------------------------------------------------
@@ -279,6 +316,82 @@ export const GUIDE: GuideEntry[] = [
     helped: 'Indigos need big, connected habitat with lots of tortoise burrows.',
     hint: 'Needs 2+ tortoise burrows and no tegus around.',
   },
+
+  // --- Burrow neighbors ------------------------------------------------------
+  {
+    id: 'frog',
+    name: 'Florida gopher frog',
+    sci: 'Lithobates capito',
+    category: 'burrowGuest',
+    facts: [
+      'Gopher frogs spend most of their lives tucked inside gopher tortoise burrows.',
+      'Their call sounds like a deep, rumbling snore.',
+      'They hop to nearby ponds to lay eggs, then come home to the burrow.',
+    ],
+    helped: 'Every tortoise burrow is a little apartment building for neighbors like this one.',
+    hint: 'Peek into a tortoise burrow with the burrow scope.',
+  },
+  {
+    id: 'beetle',
+    name: 'Gopher tortoise scarab',
+    sci: 'Onthophagus polyphemi',
+    category: 'burrowGuest',
+    facts: [
+      'Some scarab beetles live only in gopher tortoise burrows, and nowhere else on Earth.',
+      'They recycle the tortoise’s droppings deep underground.',
+    ],
+    helped: 'Tiny recyclers! Protecting tortoises protects the beetles that depend on them.',
+    hint: 'Peek into a tortoise burrow with the burrow scope.',
+  },
+  {
+    id: 'cricket',
+    name: 'Camel cricket',
+    sci: 'Ceuthophilus sp.',
+    category: 'burrowGuest',
+    facts: [
+      'Humpbacked, long-legged crickets hide in the cool, damp dark of the burrow.',
+      'They find their way with very long antennae instead of eyes.',
+    ],
+    helped: 'The deep burrow stays cool in summer and mild in winter, a refuge for many small lives.',
+    hint: 'Peek into a tortoise burrow with the burrow scope.',
+  },
+
+  // --- Forces of the scrub ---------------------------------------------------
+  {
+    id: 'fire',
+    name: 'Fire',
+    category: 'scrubForce',
+    facts: [
+      'Florida scrub is shaped by fire. Summer lightning used to spark fires every 5–20 years.',
+      'Oaks, palmettos and hickories survive fire and resprout from deep roots within weeks.',
+      'Florida rosemary is killed by fire, but its seeds sprout in the fresh, open sand.',
+      'Too often, and fire burns young plants before they can recover. Too rarely, and the scrub grows tall and tangled.',
+      'Today, trained crews light careful prescribed burns on calm days.',
+    ],
+    helped: 'In Scrub Bot, time runs fast: ground is ready to burn again about 20 days after a fire.',
+  },
+  {
+    id: 'storm',
+    name: 'Summer storms',
+    category: 'scrubForce',
+    facts: [
+      'Florida gets more lightning than any other U.S. state, mostly in summer afternoon storms.',
+      'Rain refills ponds and soaks young plants, and lightning starts natural fires.',
+      'Fall hurricanes bring strong wind that scatters litter and invasive seeds.',
+    ],
+    helped: 'After a storm, look for new litter and seeds that blew in from outside.',
+  },
+  {
+    id: 'edge',
+    name: 'The habitat edge',
+    category: 'scrubForce',
+    facts: [
+      'Patches of scrub are surrounded by roads, yards and farms.',
+      'Wind, birds, pets and people keep carrying invasive seeds and animals across the edge.',
+      'Restoration is never finished: caring for a wild place is a forever job.',
+    ],
+    helped: 'Healthy native plants near the edge make it harder for invaders to settle in.',
+  },
 ];
 
 export const GUIDE_BY_ID = Object.fromEntries(GUIDE.map((g) => [g.id, g])) as Record<SpeciesId, GuideEntry>;
@@ -308,7 +421,12 @@ export const HAZARDS: Record<HazardId, { hp: number; verb: string; cost: number;
   bottle: { hp: 1, verb: 'Pick up', cost: 2, blocks: false, trash: 1 },
   fence: { hp: 2, verb: 'Remove', cost: 4, blocks: true, trash: 1 },
   thicket: { hp: 2, verb: 'Trim', cost: 4, blocks: false, trash: 0 },
+  balloon: { hp: 1, verb: 'Pick up', cost: 2, blocks: false, trash: 1 },
+  plastic: { hp: 1, verb: 'Pick up', cost: 2, blocks: false, trash: 1 },
+  can: { hp: 1, verb: 'Pick up', cost: 1, blocks: false, trash: 1 },
 };
+
+export const GUESTS: GuestId[] = ['frog', 'beetle', 'cricket'];
 
 /** Seeds collected from one healthy native plant per day. */
 export const SEED_YIELD: Record<NativePlantId, number> = {

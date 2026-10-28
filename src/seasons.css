@@ -1,0 +1,73 @@
+/* Seasons, weather, fire and progression: HUD, morning card, monitor and corkboard additions. */
+.status .day { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.status .day .pictogram { width: 18px; height: 18px; }
+.status .level { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 5px; font-size: 10px; line-height: 1; color: #7a6a3c; }
+.status .level .pictogram { width: 13px; height: 13px; vertical-align: -2px; }
+.status .level small { display: none; }
+.level-bar { height: 5px; min-width: 30px; border-radius: 5px; background: #e9e0c4; overflow: hidden; }
+.level-bar i { display: block; height: 100%; background: linear-gradient(90deg, #e3b241, #f2cf7a); transition: width .4s; }
+.chip.alert { background: #f8d2bd; color: #8a3f28; animation: alert-pulse 1.4s ease-in-out infinite; }
+@keyframes alert-pulse { 50% { background: #fbe4d6; } }
+button.chip.today { border: 0; color: inherit; }
+button.chip.today.done { background: #dfe9c7; }
+.today-list { position: absolute; top: var(--below-inventory, calc(126px + var(--safe-t))); left: calc(10px + var(--safe-l)); width: min(330px, calc(100% - 20px)); padding: 12px 14px; border-radius: 16px; background: #fbf5e6f5; box-shadow: var(--shadow); z-index: 6; pointer-events: auto; }
+.today-list[hidden] { display: none; }
+.today-list h3 { margin: 0 0 6px; font-family: Fraunces, Georgia, serif; font-size: 16px; font-weight: 600; color: #586e4b; }
+.today-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.today-list li { display: grid; grid-template-columns: 24px 1fr; column-gap: 8px; align-items: center; font-size: 12px; }
+.today-list li .pictogram { width: 22px; height: 22px; grid-row: span 2; }
+.today-list li small { color: #8b846b; font-size: 10px; font-weight: 600; }
+.today-list li.done span { text-decoration: line-through; color: #8b9a74; }
+.hud:has(.today-list:not([hidden])) .journey-hint { display: none; }
+
+/* Morning card */
+.morning .forecast { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 2px; }
+.morning .forecast span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; background: #eef2e2; font-size: 12px; color: #5f6f4c; }
+.morning .forecast .pictogram { width: 22px; height: 22px; }
+.morning .season-banner { margin: 8px auto; padding: 10px 12px; border-radius: 14px; background: #fff1cf; font-size: 12px; color: #7a6a3c; max-width: 360px; }
+.morning .season-banner b { display: block; font-family: Fraunces, Georgia, serif; font-size: 18px; color: #6d8158; }
+.morning .goals { text-align: left; max-width: 340px; margin: 10px auto 4px; padding: 10px 12px; border-radius: 14px; background: #f2ecd6; }
+.morning .goals h3 { margin: 0 0 4px; font-size: 12px; }
+.morning .goals li { font-size: 12px; margin: 3px 0; }
+.morning .goals .pictogram { width: 18px; height: 18px; }
+.morning .tile.fire { background: #fbe0c8; }
+.morning .tile.edge { background: #ece3d0; }
+.morning .level-line { font-size: 12px; color: #7a6a3c; margin: 6px 0; }
+
+/* Monitor: fire map and edge watch */
+.mon-fire { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #4c6a5e; }
+.mon-fire h3, .mon-edge h3 { color: #e4efcd !important; font-size: 14px !important; text-transform: none !important; letter-spacing: 0 !important; margin: 0 0 6px !important; }
+.mon-fire p, .mon-edge p { color: #a9c5a1; font-size: 11px; margin: 4px 0 8px; }
+.fire-map { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 1px; max-width: 420px; aspect-ratio: var(--ratio); border-radius: 10px; overflow: hidden; background: #1a302b; }
+.fire-map i { display: block; }
+.fire-map .recovering { background: #3f5f4a; }
+.fire-map .young { background: #6f9a6a; }
+.fire-map .ready { background: #d9b45a; }
+.fire-map .overdue { background: #d9734f; }
+.fire-map .burning { background: #ff5a2a; }
+.fire-map .base { background: #9a8f74; }
+.fire-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 6px; font-size: 10px; color: #c5d5b8; }
+.fire-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; background: var(--c); }
+.mon-zone .fire-state { flex-basis: 100%; font-size: 10px; color: #c5d5b8; }
+.mon-edge { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #4c6a5e; }
+.mon-progress { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.mon-progress span { padding: 4px 9px; border-radius: 99px; background: #d4dfc01c; color: #c5d5b8; font-size: 11px; }
+.mon-progress .pictogram { width: 18px; height: 18px; }
+
+/* Corkboard additions */
+.cork .board-section { margin-top: 10px; }
+.cork .board-section h3 { color: #6b4a2a; font-size: 12px; margin: 6px 0; }
+.cork .portraits, .cork .guests { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.cork .portrait { background: white; padding: 6px 6px 3px; border-radius: 3px; box-shadow: 0 2px 6px #4a321b33; transform: rotate(var(--tilt)); text-align: center; }
+.cork .portrait img { width: 64px; height: 56px; object-fit: contain; background: #efe6cf; }
+.cork .portrait .mg-stars { display: block; font-size: 12px; }
+.cork .guest { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border-radius: 10px; background: #fff7e2; font-size: 10px; color: #6b5a3c; width: 74px; }
+.cork .guest img { width: 40px; height: 32px; object-fit: contain; }
+.cork .guest.unknown img { filter: brightness(0) opacity(.3); }
+
+/* The topbar grew a level row; keep the rows beneath it stacked whatever their height. */
+.hud .inventory { top: var(--below-topbar, calc(84px + var(--safe-t))); max-height: none; overflow: visible; }
+.hud .journey-hint { top: var(--below-inventory, calc(126px + var(--safe-t))); }
+
+/* With the action tray open, messages move up under the HUD so they never cover the tray. */
+.hud:has(.action-dock:not([hidden])) .world-message { bottom: auto; top: var(--below-inventory, calc(126px + var(--safe-t))); }

@@ -4,6 +4,9 @@ import { BAG_CAPACITY, JAR_CAPACITY } from '../config';
 import { ICON } from '../data/icons';
 import { ZONE_NAME, ZoneId } from '../data/map';
 import { batteryFraction } from '../systems/battery';
+import { SEASON_NAME, calendar } from '../systems/calendar';
+import { levelProgress } from '../systems/progress';
+import { WEATHER } from '../systems/weather';
 import { GameState, NATIVE_PLANTS } from '../systems/state';
 import { services } from '../services';
 import { renderIcons } from './icons';
@@ -28,6 +31,10 @@ export class Hud {
   private batteryFill: HTMLElement;
   private batteryText: HTMLElement;
   private dayText: HTMLElement;
+  private levelText: HTMLElement;
+  private levelFill: HTMLElement;
+  private tasks: HTMLElement;
+  private tasksOpen = false;
   private zoneIcon: HTMLImageElement;
   private zoneFill: HTMLElement;
   private zoneWrap: HTMLElement;
@@ -53,6 +60,10 @@ export class Hud {
     this.batteryFill = el('div', 'battery-fill', battery);
     this.batteryText = el('span', 'battery-text', battery);
     this.dayText = el('div', 'day', status);
+    const level = el('div', 'level', status);
+    this.levelText = el('span', 'level-text', level);
+    const bar = el('div', 'level-bar', level);
+    this.levelFill = el('i', '', bar);
 
     this.zoneWrap = el('div', 'zone panel', top);
     this.zoneIcon = el('img', 'zone-icon', this.zoneWrap);
@@ -90,6 +101,14 @@ export class Hud {
     menu.addEventListener('click', cb.onMenu);
 
     this.inventory = el('div', 'inventory', this.root);
+    this.inventory.addEventListener('click', (e) => {
+      if (!(e.target as Element).closest('[data-tasks]')) return;
+      this.tasksOpen = !this.tasksOpen;
+      this.cache.delete('tasks');
+      audio.sfx('page');
+    });
+    this.tasks = el('div', 'today-list', this.root);
+    this.tasks.hidden = true;
     this.hint = el('div', 'journey-hint', this.root);
     this.message = el('div', 'world-message', this.root);
     this.message.setAttribute('role', 'status');
@@ -98,12 +117,24 @@ export class Hud {
     this.work.hidden = true;
     // Layer for things that float over the canvas (radial menu).
     this.layer = el('div', 'float-layer', this.root);
+    window.addEventListener('resize', () => this.layout());
   }
 
   private set(key: string, value: string, apply: () => void) {
     if (this.cache.get(key) === value) return;
     this.cache.set(key, value);
     apply();
+    // Reading layout forces a reflow, so only re-measure when a row's size can change.
+    if (key !== 'battery' && key !== 'guide') this.layout();
+  }
+
+  /** Stack the inventory, hint and goals list under the topbar, which grows on small screens. */
+  private layout(): void {
+    const top = this.root.querySelector<HTMLElement>('.topbar');
+    if (!top) return;
+    const below = top.offsetTop + top.offsetHeight + 6;
+    this.root.style.setProperty('--below-topbar', `${below}px`);
+    this.root.style.setProperty('--below-inventory', `${below + this.inventory.offsetHeight + 8}px`);
   }
 
   update(state: GameState, zone: ZoneId | null, health: number | null, guideNew: number): void {
@@ -118,7 +149,17 @@ export class Hud {
       this.batteryFill.parentElement?.setAttribute('aria-valuemax', String(state.batteryMax));
       this.batteryFill.parentElement?.setAttribute('aria-valuemin', '0');
     });
-    this.set('day', String(state.day), () => (this.dayText.innerHTML = renderIcons(`${ICON.day} Day ${state.day}`)));
+    const cal = calendar(state.day);
+    const sky = WEATHER[state.weather.kind];
+    this.set('day', `${state.day}:${state.weather.kind}`, () => {
+      this.dayText.innerHTML = renderIcons(`<span title="${SEASON_NAME[cal.season]}">${ICON[cal.season]}</span> Day ${state.day} <span class="sky" title="${sky.name}">${sky.icon}</span>`);
+      this.dayText.setAttribute('aria-label', `${SEASON_NAME[cal.season]}, year ${cal.year}, day ${state.day}. ${sky.name}.`);
+    });
+    const lv = levelProgress(state);
+    this.set('level', `${state.level}:${state.xp}`, () => {
+      this.levelText.innerHTML = renderIcons(`${ICON.level} Lv ${lv.level} <small>${lv.title}</small>`);
+      this.levelFill.style.width = `${Math.min(100, (lv.into / Math.max(1, lv.need)) * 100)}%`;
+    });
 
     this.set('zone', `${zone}:${health}:${state.location}`, () => {
       this.zoneWrap.hidden = zone === null;
@@ -147,9 +188,18 @@ export class Hud {
     if (state.jar > 0) chips.push(chip(`${ICON.jar}${state.jar}`, state.jar >= JAR_CAPACITY ? ' full' : ''));
     if (state.crate) chips.push(chip(`${ICON.crate}${img(state.crate.species)}`));
     chips.push(chip(`${ICON.parts} Parts ${state.parts}`));
+    if (state.fires.length || state.water < state.waterMax) chips.push(chip(`${ICON.tank} ${state.water}/${state.waterMax}`, state.water === 0 ? ' full' : ''));
+    if (state.fires.length && state.location === 'outside') chips.push(chip(`${ICON.fire} Fire · ${state.fires.length}`, ' alert'));
+    const goals = state.tasks ?? [];
+    if (goals.length) chips.push(`<button class="chip today${goals.every((t) => t.done) ? ' done' : ''}" data-tasks aria-expanded="${this.tasksOpen}" aria-label="Today’s goals">${ICON.task} Today ${goals.filter((t) => t.done).length}/${goals.length}</button>`);
     const inv = chips.join('');
     this.set('inv', inv, () => (this.inventory.innerHTML = renderIcons(inv)));
-    const hint = state.location === 'home' ? '' : !state.scanned.includes('cogon') ? 'Start small: tap the white-plumed grass, then Scan.' : state.entities.some(e => e.kind === 'invasivePlant' && e.tx === 31 && e.ty === 28 && e.species === 'airpotato') ? 'A little rescue: free the vine-covered oak northeast of home.' : state.stats.planted === 0 ? 'Healthy natives offer seeds. Grow them in the pod’s nursery.' : 'A healthier scrub brings new neighbors. Say hello when they arrive.';
+    const list = goals.map((t) => `<li class="${t.done ? 'done' : ''}">${t.done ? ICON.done : t.icon}<span>${t.label}</span><small>${t.done ? 'Done!' : `${t.progress}/${t.goal} · +${t.reward} parts`}</small></li>`).join('');
+    this.set('tasks', `${this.tasksOpen}:${list}`, () => {
+      this.tasks.hidden = !this.tasksOpen || !goals.length;
+      this.tasks.innerHTML = renderIcons(`<h3>Today’s little list</h3><ul>${list}</ul>`);
+    });
+    const hint = state.location === 'home' ? '' : state.fires.length ? 'A fire is burning. Tap the flames: contain it, or let it renew old scrub.' : !state.scanned.includes('cogon') ? 'Start small: tap the white-plumed grass, then Scan.' : state.entities.some(e => e.kind === 'invasivePlant' && e.tx === 31 && e.ty === 28 && e.species === 'airpotato') ? 'A little rescue: free the vine-covered oak northeast of home.' : state.stats.planted === 0 ? 'Healthy natives offer seeds. Grow them in the pod’s nursery.' : 'A healthier scrub brings new neighbors. Say hello when they arrive.';
     this.set('hint', hint, () => { this.hint.textContent = hint; this.hint.hidden = !hint; });
   }
 

@@ -70,7 +70,9 @@ describe('actions', () => {
     const t = { type: 'entity' as const, entity: cogon };
     expect(getActions(s, t).map((a) => a.verb)).toEqual(['scan']);
     expect(performAction(s, getActions(s, t)[0]).scanned).toBe('cogon');
-    expect(getActions(s, t).map((a) => a.verb)).toEqual(['remove', 'info']);
+    expect(getActions(s, t).map((a) => a.verb)).toEqual(['remove', 'dig', 'info']);
+    // Digging out roots is a later tool: shown, but locked until its level.
+    expect(find(s, t, 'dig')).toMatchObject({ enabled: false, needLevel: 3 });
     expect(doVerb(s, t, 'remove')).toBe(true);
     expect(s.entities).toHaveLength(0);
   });
@@ -243,7 +245,7 @@ describe('save', () => {
   it('migrates a v1 save', () => {
     const v1 = { version: 1, day: 3, returned: ['tortoise'], postcards: [{ title: 'x' }], selectedSeed: 'oak', trays: [] } as Record<string, unknown>;
     const s = migrate(v1)!;
-    expect(s.version).toBe(2);
+    expect(s.version).toBe(3);
     expect(s.populations).toEqual({ tortoise: 1 });
     expect(s.vases).toEqual([[]]);
     expect(s.postcards).toEqual([]);

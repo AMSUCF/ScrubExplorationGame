@@ -1,7 +1,8 @@
 // The whole game is one plain, JSON-serialisable state object. Systems mutate it; scenes render it.
-import { BATTERY_START, CHOKE_RADIUS, MAP_H, MAP_W, TILE, TRAY_COUNT } from '../config';
+import { BATTERY_START, CHOKE_RADIUS, MAP_H, MAP_W, TILE, TRAY_COUNT, WATER_TANK } from '../config';
 import { BASE_CENTER, ROBOT_SPAWN, ZoneId, inBounds, isStationTile, tileCenter, zoneAt } from '../data/map';
 import {
+  GuestId,
   HAZARDS,
   HazardId,
   INVASIVE_PLANTS,
@@ -11,10 +12,13 @@ import {
   NativePlantId,
   SpeciesId,
 } from '../data/species';
+import { FireCell, Firebreak, FireReport, Sprout, emptyFireReport, initialBurnDays } from './fire';
 import { Rng, mulberry32, pick, randInt } from './rng';
+import { planTasks, type DailyTask } from './tasks';
 import type { VineCareProgress } from './vineCare';
+import { Weather, rollWeather } from './weather';
 
-export const STATE_VERSION = 2;
+export const STATE_VERSION = 3;
 
 export interface InvasivePlantEntity {
   id: number;
@@ -39,6 +43,12 @@ export interface NativePlantEntity {
   lastSprigDay?: number;
   /** Set the first time the plant is free of nearby invasives. */
   rescued: boolean;
+  /** Day a fire burned it back to the roots; it resprouts over the following mornings. */
+  burnedDay?: number;
+  /** Extra days of growth from rainy nights. */
+  boost?: number;
+  /** Saw palmettos flower heavily after fire: extra seeds until this day. */
+  bloomUntil?: number;
 }
 
 export interface HazardEntity {
@@ -55,6 +65,8 @@ export interface BurrowEntity {
   kind: 'burrow';
   tx: number;
   ty: number;
+  /** Last day the burrow scope peeked inside (once a day per burrow). */
+  scopedDay?: number;
 }
 
 export interface InvasiveAnimalEntity {
@@ -84,6 +96,9 @@ export interface TrayState {
   growth: number;
   watered: boolean;
 }
+
+/** What's rattling around in the bag, so the recycler can be sorted by material. */
+export type BagItem = Exclude<HazardId, 'thicket'> | 'bulbil';
 
 export interface CrateContents {
   species: InvasiveAnimalId;
@@ -158,10 +173,37 @@ export interface GameState {
     trashCollected: number;
     planted: number;
     relocated: number;
+    /** v3 additions. */
+    arrivals?: number;
+    burned?: number;
+    contained?: number;
+    portraits?: number;
   };
   won: boolean;
   /** One small thank-you from each native species per day; additive to existing v2 saves. */
   encounters?: string[];
+
+  // --- v3: seasons, weather, fire, progression -------------------------------------------
+  weather: Weather;
+  /** Day each map tile last burned, row-major (MAP_W × MAP_H). */
+  burned: number[];
+  fires: FireCell[];
+  firebreaks: Firebreak[];
+  seedbank: Sprout[];
+  /** What fire did today, for the morning card. */
+  fireToday: FireReport;
+  water: number;
+  waterMax: number;
+  /** Water-tank upgrades bought at the workbench (optional: added after v3 shipped). */
+  tankUpgrades?: number;
+  xp: number;
+  level: number;
+  tasks: DailyTask[];
+  /** Best portrait stars per species. */
+  portraits: Partial<Record<NativeAnimalId, number>>;
+  /** Burrow neighbors met through the scope. */
+  guests: GuestId[];
+  bagItems: BagItem[];
 }
 
 export const NATIVE_PLANTS: NativePlantId[] = ['palmetto', 'rosemary', 'oak', 'hickory'];
@@ -311,8 +353,22 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
     location: 'outside',
     introSeen: false,
     catNameIndex: 0,
-    stats: { invasivesRemoved: 0, trashCollected: 0, planted: 0, relocated: 0 },
+    stats: { invasivesRemoved: 0, trashCollected: 0, planted: 0, relocated: 0, arrivals: 0, burned: 0, contained: 0, portraits: 0 },
     won: false,
+    weather: rollWeather(seed, 1),
+    burned: initialBurnDays(seed),
+    fires: [],
+    firebreaks: [],
+    seedbank: [],
+    fireToday: emptyFireReport(),
+    water: WATER_TANK,
+    waterMax: WATER_TANK,
+    xp: 0,
+    level: 1,
+    tasks: [],
+    portraits: {},
+    guests: [],
+    bagItems: [],
   };
 
   // A tiny tutorial cluster just outside base: a choked rosemary, some cogon, a bottle.
@@ -409,6 +465,7 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
   }
 
   refreshRescues(state);
+  state.tasks = planTasks(state);
   return state;
 }
 
@@ -419,6 +476,12 @@ export function isChoked(state: GameState, plant: NativePlantEntity, radius = CH
     (e) =>
       e.kind === 'invasivePlant' && Math.abs(e.tx - plant.tx) <= radius && Math.abs(e.ty - plant.ty) <= radius,
   );
+}
+
+/** A native that is regrowing (a new seedling, or resprouting after fire) and has no seeds yet. */
+export function isRegrowing(state: GameState, e: NativePlantEntity): boolean {
+  if (e.planted && state.day - e.plantedDay + (e.boost ?? 0) < 2) return true;
+  return e.burnedDay !== undefined && state.day - e.burnedDay < 2;
 }
 
 /** Marks natives that are now free of invasives as rescued; returns the newly rescued ones. */

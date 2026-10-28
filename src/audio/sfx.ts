@@ -37,7 +37,19 @@ export type SfxName =
   | 'whoosh'
   | 'land'
   | 'pop'
-  | 'page';
+  | 'page'
+  | 'douse'
+  | 'rake'
+  | 'ignite'
+  | 'thunder'
+  | 'shutter'
+  | 'dig'
+  | 'sortOk'
+  | 'sortMiss'
+  | 'levelUp'
+  | 'task'
+  | 'scope'
+  | 'frog';
 
 const chime = (s: Synth, notes: number[], gap: number, vol = 0.08, decay = 1.1) =>
   notes.forEach((n, i) => s.bell(midi(n), i * gap, vol, decay));
@@ -173,4 +185,43 @@ export const SFX: Record<SfxName, (s: Synth) => void> = {
   },
   pop: (s) => s.tone({ freq: 400, to: 1100, dur: 0.07, vol: 0.07 }),
   page: (s) => s.noise({ dur: 0.18, vol: 0.06, attack: 0.03, filter: { type: 'bandpass', freq: 3500, to: 1800, q: 0.7 } }),
+  douse: (s) => {
+    s.noise({ dur: 0.5, vol: 0.14, attack: 0.02, filter: { type: 'bandpass', freq: 2600, to: 1200, q: 0.7 } }); // spray
+    s.noise({ at: 0.18, dur: 0.4, vol: 0.08, filter: { type: 'highpass', freq: 3500 } }); // hiss of steam
+  },
+  rake: (s) => {
+    for (const at of [0, 0.14, 0.28]) s.noise({ at, dur: 0.1, vol: 0.12, filter: { type: 'bandpass', freq: 1200, to: 700, q: 1.2 } });
+  },
+  ignite: (s) => {
+    s.noise({ dur: 0.25, vol: 0.12, attack: 0.05, filter: { type: 'bandpass', freq: 500, to: 1800, q: 0.8 } }); // whump
+    for (let i = 0; i < 5; i++) s.noise({ at: 0.2 + i * 0.07 + Math.random() * 0.03, dur: 0.015, vol: 0.1, filter: { type: 'highpass', freq: 2500 } });
+  },
+  thunder: (s) => {
+    s.noise({ dur: 0.12, vol: 0.25, filter: { type: 'lowpass', freq: 2000 } }); // crack
+    s.noise({ at: 0.05, dur: 2.6, vol: 0.6, attack: 0.15, filter: { type: 'lowpass', freq: 260, to: 60, q: 0.6 }, tremolo: { rate: 7, depth: 0.5 } }); // rumble
+  },
+  shutter: (s) => {
+    s.noise({ dur: 0.02, vol: 0.16, filter: { type: 'highpass', freq: 3000 } });
+    s.tone({ at: 0.03, freq: 1500, to: 900, dur: 0.05, vol: 0.05, type: 'square', filter: { type: 'lowpass', freq: 2500 } });
+    s.noise({ at: 0.07, dur: 0.03, vol: 0.1, filter: { type: 'bandpass', freq: 1800, q: 2 } });
+  },
+  dig: (s) => {
+    s.noise({ dur: 0.14, vol: 0.12, filter: { type: 'lowpass', freq: 900 } });
+    s.tone({ at: 0.08, freq: 500, to: 900, dur: 0.06, vol: 0.05 }); // a root gives way
+  },
+  sortOk: (s) => chime(s, [84, 88], 0.06, 0.06, 0.6),
+  sortMiss: (s) => s.tone({ freq: 330, to: 260, dur: 0.16, vol: 0.06, type: 'triangle' }),
+  levelUp: (s) => {
+    s.pad([midi(62), midi(66), midi(69), midi(74)], 0, 1.8, 0.06);
+    chime(s, [74, 78, 81, 86, 90, 93], 0.08, 0.07, 1.4);
+  },
+  task: (s) => chime(s, [79, 86], 0.1, 0.07, 1),
+  scope: (s) => {
+    s.tone({ freq: 180, to: 140, type: 'sawtooth', dur: 0.5, vol: 0.03, filter: { type: 'lowpass', freq: 500 } }); // cable whirr
+    s.bell(midi(91), 0.45, 0.04, 0.4);
+  },
+  frog: (s) => {
+    // The gopher frog's call: a deep, rumbling snore.
+    for (const at of [0, 0.9]) s.noise({ at, dur: 0.7, vol: 0.55, attack: 0.1, filter: { type: 'bandpass', freq: 240, q: 2.5 }, tremolo: { rate: 32, depth: 0.8 } });
+  },
 };

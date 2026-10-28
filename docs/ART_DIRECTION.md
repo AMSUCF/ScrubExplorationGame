@@ -54,6 +54,14 @@ choked plants.
   reduced-motion preference. Nunito and Fraunces are bundled locally, including their SIL Open
   Font License notices; the game makes no Google Fonts requests.
 
+## Placeholders for the seasons, weather and fire update
+
+Weather, fire, storm litter, burrow neighbors, guide cards, mini-game backdrops and 22 new pictograms
+are drawn procedurally in `src/art/effects.ts` until they are illustrated. They are listed with sizes,
+anchors, field marks and image-generation prompts in [ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md) and
+[art-requests.json](art-requests.json). `art:check` only covers delivered keys, so the placeholders do
+not affect it; `npm test` checks that every placeholder is either requested or delivered.
+
 ## Natural-history decisions
 
 Field marks come from the species-specific requirements in the illustration brief. Accuracy takes

@@ -7,7 +7,12 @@ import { renderIcons } from './icons';
 
 const safe = (s: string) => s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 const blocked = (a: Action): string => {
+  if (a.needLevel) return `Unlocks at stewardship level ${a.needLevel}.`;
   if (a.blockTex) return 'A wildlife milestone is needed first.';
+  if (a.verb === 'ignite') return a.block === ICON.wait ? 'This ground burned recently. Let it regrow first.' : a.block === ICON.bang ? 'Nothing here is dry enough to carry a flame.' : 'Burns need calm, mild weather: clear, foggy or cool days.';
+  if (a.verb === 'contain') return 'The water tank is empty. It refills overnight.';
+  if (a.verb === 'scope' && a.block === ICON.done) return 'You peeked in today. Let them rest.';
+  if (a.verb === 'sort') return 'Bring at least two pieces of litter to sort.';
   const reasons: Record<string, string> = { [ICON.battery]: 'Recharge at your pod.', [ICON.bag]: 'Make room in your bag at the recycler.', [ICON.sad]: 'Free the nearby native habitat first.', [ICON.wait]: 'Come back after the next morning.', [ICON.done]: 'Done for today.', [ICON.parts]: 'Gather more recycled parts.', [ICON.lock]: 'Help more wildlife return first.', [ICON.question]: 'Collect native seeds or sprigs first.', [ICON.crate]: 'Drop off the animal you are carrying.', [ICON.jar]: 'Drop off your jar at the wildlife pad.', [ICON.bang]: 'Choose open sand outside the clearing.' };
   return reasons[a.block ?? ''] ?? 'Not quite ready yet.';
 };

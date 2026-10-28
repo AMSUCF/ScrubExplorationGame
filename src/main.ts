@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import './style.css';
 import './refinement.css';
+import './minigames.css';
+import './seasons.css';
 import { audio } from './audio';
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';
@@ -10,6 +12,9 @@ import { WorldScene } from './scenes/WorldScene';
 import { services } from './services';
 import { Hud } from './ui/hud';
 import { initKeyboard } from './ui/input';
+import * as fire from './systems/fire';
+import * as progress from './systems/progress';
+import { nightTick } from './systems/dayCycle';
 
 // Render at device pixel ratio (capped for performance) so the art stays crisp on phones.
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -63,5 +68,5 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // `?debug` exposes the game for automated smoke tests and console poking.
 if (new URLSearchParams(location.search).has('debug')) {
-  Object.assign(window, { __game: game, __audio: audio });
+  Object.assign(window, { __game: game, __audio: audio, __systems: { ...fire, ...progress, nightTick } });
 }
