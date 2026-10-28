@@ -448,12 +448,36 @@ function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>, art: 
     for (let tx = 0; tx < MAP_W; tx += 3) {
       const x = tx * TILE, y = ty * TILE, r = 35 + hash2(tx, ty, 3) * 55;
       const wash = c.createRadialGradient(x, y, 0, x, y, r);
-      wash.addColorStop(0, hash2(tx, ty, 6) > .5 ? 'rgba(118, 133, 83, .06)' : 'rgba(255, 251, 221, .14)');
+      wash.addColorStop(0, hash2(tx, ty, 6) > .5 ? 'rgba(118, 133, 83, .035)' : 'rgba(255, 251, 221, .065)');
       wash.addColorStop(1, 'rgba(255, 251, 221, 0)');
       c.fillStyle = wash; c.fillRect(x - r, y - r, r * 2, r * 2);
     }
   }
   c.globalAlpha = 1;
+  // Feather several grain/leaf-litter variants over each habitat instead of repeating one tile.
+  const stamps = new Map<string, HTMLCanvasElement>();
+  for (let ty = 2; ty < MAP_H - 2; ty += 3) for (let tx = 2; tx < MAP_W - 2; tx += 3) {
+    const key = `ground_${zoneAt(tx, ty)}_${hash2(tx, ty, 41) > .5 ? 1 : 2}`;
+    let stamp = stamps.get(key);
+    if (!stamp) {
+      const variant = art(key);
+      if (!variant) continue;
+      stamp = document.createElement('canvas'); stamp.width = 160; stamp.height = 160;
+      const sc = stamp.getContext('2d')!;
+      sc.drawImage(variant, 0, 0, 160, 160);
+      sc.globalCompositeOperation = 'destination-in';
+      const fade = sc.createRadialGradient(80, 80, 10, 80, 80, 80);
+      fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(.3, 'rgba(0,0,0,.95)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+      sc.fillStyle = fade; sc.fillRect(0, 0, 160, 160);
+      stamps.set(key, stamp);
+    }
+    const size = 130 + hash2(tx, ty, 42) * 55;
+    c.save();
+    c.translate(tx * TILE + (hash2(tx, ty, 43) - .5) * 35, ty * TILE + (hash2(tx, ty, 44) - .5) * 35);
+    c.rotate(hash2(tx, ty, 45) * Math.PI * 2);
+    c.drawImage(stamp, -size / 2, -size / 2, size, size);
+    c.restore();
+  }
   // Ground details: grass tufts, lichen, pebbles.
   for (let ty = 0; ty < MAP_H; ty++) {
     for (let tx = 0; tx < MAP_W; tx++) {
@@ -489,32 +513,37 @@ function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>, art: 
   // Keep the action area around the pod clear; these are baked into the ground, not blockers.
   for (let ty = 1; ty < MAP_H - 1; ty++) for (let tx = 1; tx < MAP_W - 1; tx++) {
     const n = hash2(tx, ty, 31);
-    if (n > .23 || Math.hypot(tx - 28, ty - 35) < 4) continue;
+    if (n > .19 || Math.hypot(tx - 28, ty - 35) < 4) continue;
     const zone = zoneAt(tx, ty);
-    const key = zone === 'rosemary' ? 'decor_lichen' : n < .028 ? 'decor_flower' : n < .06 ? 'decor_frond' : 'decor_grass';
+    const key = zone === 'rosemary' ? n < .012 ? 'decor_deadwood' : 'decor_lichen' : zone === 'oak' && n < .08 ? 'decor_acorns' : n < .018 ? 'decor_deadwood' : n < .035 ? 'decor_flower' : n < .06 ? 'decor_frond' : 'decor_grass';
     const image = art(key);
     if (!image) continue;
     const x = tx * TILE + hash2(tx, ty, 32) * 22, y = ty * TILE + hash2(tx, ty, 33) * 22;
     const [w, h] = catalog[key as keyof typeof catalog];
     const size = .6 + hash2(tx, ty, 34) * .5;
-    c.drawImage(image, x, y, w * size, h * size);
+    c.save(); c.translate(x, y);
+    // Fallen debris can turn freely; upright grass and flowers keep their natural growth direction.
+    c.rotate((hash2(tx, ty, 35) - .5) * (['decor_frond', 'decor_acorns', 'decor_deadwood'].includes(key) ? 5 : .28));
+    if (hash2(tx, ty, 36) > .5) c.scale(-1, 1);
+    c.drawImage(image, -w * size / 2, -h * size / 2, w * size, h * size); c.restore();
   }
   // Wild, unrestored scrub at the map edge.
-  for (let tx = 0; tx < MAP_W; tx++) {
+  for (let tx = 0; tx < MAP_W; tx += 1.35) {
     for (const ty of [0, MAP_H - 1]) edgeBush(c, tx, ty, edge);
   }
-  for (let ty = 0; ty < MAP_H; ty++) {
+  for (let ty = 0; ty < MAP_H; ty += 1.35) {
     for (const tx of [0, MAP_W - 1]) edgeBush(c, tx, ty, edge);
   }
 }
 
 function edgeBush(c: Ctx, tx: number, ty: number, art: CanvasImageSource | null) {
-  const x = tx * TILE + 16;
-  const y = ty * TILE + 16;
+  const x = tx * TILE + 16 + (hash2(tx, ty, 24) - .5) * 24;
+  const y = ty * TILE + 16 + (hash2(tx, ty, 25) - .5) * 24;
   if (art) {
-    const size = 48 + hash2(tx, ty, 21) * 12;
+    const width = 68 + hash2(tx, ty, 21) * 36, height = width * 64 / 76;
     c.save(); c.translate(x, y); c.rotate((hash2(tx, ty, 22) - .5) * .3);
-    c.drawImage(art, -size / 2, -size / 2, size, size); c.restore();
+    if (hash2(tx, ty, 23) > .5) c.scale(-1, 1);
+    c.drawImage(art, -width / 2, -height / 2, width, height); c.restore();
     return;
   }
   circle(c, x, y, 22 + hash2(tx, ty, 21) * 6, PAL.edgeDark);

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
+import './refinement.css';
 import { audio } from './audio';
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';

@@ -18,9 +18,9 @@ function lichen(x, y, s = 1) {
   return group(a, `translate(${x} ${y}) scale(${s})`);
 }
 
-export function ground(zone) {
+export function ground(zone, variant = 0) {
   const bg = { sand: '#ede0bc', oak: '#dcd1a8', rosemary: '#f3eedc', base: '#e6d3ad' }[zone];
-  const rand = random({ sand: 3, oak: 8, rosemary: 11, base: 17 }[zone]);
+  const rand = random({ sand: 3, oak: 8, rosemary: 11, base: 17 }[zone] + variant * 71);
   let b = rect(0, 0, 128, 128, 0, bg);
   // Every motif wraps at all four edges. No baked-in lighting seam.
   const wrap = (x, y, motif) => {
@@ -124,6 +124,12 @@ export function sprig(species) {
 
 export function prop(key) {
   switch (key) {
+    case 'vine_leaf': return svg(22, 24, path('M11 22C7 17-2 11 2 5Q7-1 11 5Q17-2 21 5C26 12 14 19 11 22Z', '#94b96b', '#5b7b47', 1) + path('M11 20V6M11 15Q7 9 4 8M11 12Q15 8 18 7', 'none', '#ccda94', .7));
+    case 'vine_bulbil': return svg(12, 15, path('M6 2V0', 'none', '#8b9c63', 1) + path('M2 6C0 3 5 1 8 3Q13 3 11 9C11 15 2 16 1 11Z', '#af8c63', '#7e674c', .7) + [3, 7, 9, 5].map((x, i) => ellipse(x, 5 + i * 2, .8, .6, i % 2 ? '#c7a67b' : '#92734f')).join(''));
+    case 'decor_butterfly': return svg(20, 16, path('M10 8C0-5-4 9 8 10C0 18 12 19 10 9C12 19 21 17 13 10C26 8 18-5 10 8Z', '#e3ba7b', '#a98458', .65) + path('M10 6V12M10 7 8 4M10 7 12 4', 'none', '#776c50', .7) + [4, 15].map(x => ellipse(x, 7, 1.3, 1.5, '#f7e5af')).join(''));
+    case 'decor_deadwood': return svg(34, 16, shadow(17, 13, 16, 2) + path('M3 11L29 4M11 9L7 3M22 6L27 12', 'none', '#b09e7d', 4) + path('M3 10L29 3M12 8 8 3M22 5 26 11', 'none', '#decc9f', 1));
+    case 'decor_acorns': return svg(16, 12, shadow(8, 10, 7, 1) + ellipse(5, 7, 2, 3, '#c4a16b', '#9e8257', .5) + ellipse(5, 5, 2.4, 1.2, '#a99a71') + group(ellipse(0, 0, 2, 3, '#bfa475', '#9e8257', .5) + ellipse(0, -2, 2.4, 1.2, '#a99a71'), 'translate(11 7) rotate(55)'));
+    case 'decor_tracks': return svg(24, 14, [4, 10, 16, 22].map((x, i) => ellipse(x, i % 2 ? 9 : 4, 1.1, 1.7, '#d4c49f') + path(`M${x - 1} ${i % 2 ? 7 : 2}v-1m1 1v-1m1 1v-1`, 'none', '#cdbb93', .4)).join(''));
     case 'decor_grass': return svg(18, 16, shadow(9, 14, 8, 1.3) + path('M8 14Q3 7 1 7M8 14Q6 3 3 2M9 14Q8 3 10 1M10 14Q12 6 16 4M10 14Q14 9 17 10', 'none', '#a3af7d', .8) + path('M7 13Q5 8 4 7M10 14Q11 7 13 5', 'none', '#c0c28e', .65));
     case 'decor_lichen': return svg(16, 12, shadow(8, 10, 7, 1) + lichen(4, 8, .75) + lichen(10, 9, .85) + lichen(8, 6, .7));
     case 'decor_flower': return svg(12, 14, path('M6 13Q5 9 7 5', 'none', '#9aab75', .7) + leaf(6, 11, .24, -70, '#aebd85') + [0, 60, 120, 180, 240, 300].map(a => group(ellipse(7, 3, 1, 2.2, '#edce82'), `rotate(${a} 7 5)`)).join('') + ellipse(7, 5, 1.2, 1.2, '#c4a267'));

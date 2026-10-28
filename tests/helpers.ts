@@ -1,5 +1,6 @@
 import { Action, Target, Verb, getActions, performAction } from '../src/systems/actions';
 import { GameState, newGame } from '../src/systems/state';
+import { BULBILS, PULL, SNIPS, bagBulbil, newVineCare, pullVine, snipVine } from '../src/systems/vineCare';
 
 export function memoryStorage() {
   const data = new Map<string, string>();
@@ -24,5 +25,12 @@ export function find(s: GameState, target: Target, verb: Verb, param?: string): 
 export function doVerb(s: GameState, target: Target, verb: Verb, param?: string): boolean {
   const a = find(s, target, verb, param);
   if (!a?.enabled) return false;
+  // The tireless playthrough helper completes the same work rules as the touch encounter.
+  if (verb === 'remove' && target.type === 'entity' && target.entity.kind === 'invasivePlant' && target.entity.species === 'airpotato') {
+    const work = target.entity.care ??= newVineCare();
+    SNIPS.forEach((_, i) => snipVine(work, i));
+    BULBILS.forEach((_, i) => bagBulbil(work, i));
+    pullVine(work, PULL, { x: PULL.x, y: PULL.y + 70 });
+  }
   return performAction(s, a).ok;
 }

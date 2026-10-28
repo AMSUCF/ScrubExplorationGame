@@ -1,5 +1,11 @@
 # Scrub Bot — Illustration Asset Brief
 
+> The tables below record the first illustration pass. The habitat-scale refinement enlarges world
+> plants and trees; use `src/data/visuals.ts` and `src/art/catalog.json` for current delivery/display
+> dimensions. Nature has been rebuilt with finer botanical painting, irregular branching canopies,
+> natural wildlife proportions, and detailed quartz, litter, and lichen ground. See
+> `docs/ART_DIRECTION.md` for the current sizes, source sheets, layered vines, and labelled interfaces.
+
 This brief is for the illustration model or artist producing final art for **Scrub Bot**, a cozy, wordless, top-down game about a small robot restoring an abandoned patch of **Florida scrub**. Every asset below already exists in the game as a code-drawn placeholder with the same **texture key**. Finished PNGs drop straight in (see [Delivery](#delivery)).
 
 Two goals pull against each other, and the art must satisfy both:

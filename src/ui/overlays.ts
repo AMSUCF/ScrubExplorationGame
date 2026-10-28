@@ -10,19 +10,20 @@ import { audio } from '../audio';
 import { services } from '../services';
 import { setInputEnabled } from './input';
 import { renderIcons } from './icons';
+import { ZONE_NAME } from '../data/map';
 
 export type IconSource = (key: string) => string;
 
 let openCount = 0;
 const icon: IconSource = (key) => services.icon(key);
 
-function overlay(className: string, html: string): { root: HTMLElement; close: () => void } {
+export function overlay(className: string, html: string): { root: HTMLElement; close: () => void } {
   const root = document.createElement('div');
   root.className = `overlay ${className}`;
   root.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${className === 'title' ? 'Scrub Bot' : className}">${renderIcons(html)}</div>`;
   root.addEventListener('keydown', (e) => {
     if (e.key !== 'Tab') return;
-    const buttons = [...root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')].filter((b) => !b.closest('[hidden]'));
+    const buttons = [...root.querySelectorAll<HTMLElement>('button:not([disabled]), [tabindex="0"]')].filter((b) => !b.closest('[hidden]'));
     const first = buttons[0], last = buttons[buttons.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
@@ -170,7 +171,7 @@ export function showFieldGuide(state: GameState, openId?: SpeciesId): Promise<vo
     }).join('');
     const { root, close } = overlay(
       'guide',
-      `<div class="guide-head"><h2>${ICON.info}</h2><span class="count">${found}/${GUIDE.length}</span>
+      `<div class="guide-head"><h2>${ICON.info} Field guide</h2><span class="count">${found}/${GUIDE.length}</span>
          <button class="icon-btn" data-close aria-label="Close">✕</button></div>
        <div class="guide-body">${sections}</div>
        <div class="detail" hidden></div>`,
@@ -224,11 +225,11 @@ function renderDetail(g: GuideEntry, state: GameState): string {
 /** Picture row of what a species still needs (or a heart if it's content). */
 function needsRow(state: GameState, species: NativeAnimalId, arrivalOnly = false): string {
   const needs = speciesNeeds(state, species).filter((n) => !n.met && (!arrivalOnly || n.forArrival));
-  if (needs.length === 0) return `<span class="needs ok">${ICON.heart}</span>`;
+  if (needs.length === 0) return `<span class="needs ok">${ICON.heart} ${arrivalOnly ? 'This habitat is ready for a new neighbor.' : 'Everything this neighbor needs is here.'}</span>`;
   const seen = new Set<string>();
   return `<span class="needs">${needs
-    .filter((n) => !seen.has(n.icon) && seen.add(n.icon))
-    .map((n) => `<span class="need">${img(n.icon)}</span>`)
+    .filter((n) => !seen.has(n.label) && seen.add(n.label))
+    .map((n) => `<span class="need">${img(n.icon)}<span>${escape(n.label)}</span></span>`)
     .join('')}</span>`;
 }
 
@@ -253,22 +254,22 @@ function postcardHtml(p: Postcard): string {
 export function showMorning(summary: NightSummary, state: GameState): Promise<void> {
   return new Promise((resolve) => {
     const tiles: string[] = [];
-    for (const sp of summary.arrived) tiles.push(`<div class="tile star">${img(sp)}<span>${ICON.star}</span></div>`);
+    for (const sp of summary.arrived) tiles.push(`<div class="tile star">${img(sp)}<span>${ICON.star}</span><small>Welcome home,<br>${escape(speciesName(sp))}!</small></div>`);
     for (const p of summary.pops) {
       if (p.arrived) continue;
-      tiles.push(`<div class="tile">${img(p.species)}<span>${p.to > p.from ? ICON.up : ICON.down}${p.to}</span></div>`);
+      tiles.push(`<div class="tile">${img(p.species)}<span>${p.to > p.from ? ICON.up : ICON.down}${p.to}</span><small>${p.to > p.from ? 'A growing family' : 'Needs a little care'}</small></div>`);
     }
-    if (summary.ready > 0) tiles.push(`<div class="tile">${img('hydro_ready_wet')}<span>×${summary.ready}</span></div>`);
-    else if (summary.grew > 0) tiles.push(`<div class="tile">${img('hydro_sprout_wet')}<span>${ICON.up}</span></div>`);
-    if (summary.unwatered > 0) tiles.push(`<div class="tile warn">${img('hydro_sown_dry')}<span>${ICON.water}${ICON.bang}</span></div>`);
-    if (summary.spread > 0) tiles.push(`<div class="tile warn">${img('cogon')}<span>+${summary.spread}</span></div>`);
+    if (summary.ready > 0) tiles.push(`<div class="tile">${img('hydro_ready_wet')}<span>×${summary.ready}</span><small>Ready to pot up</small></div>`);
+    else if (summary.grew > 0) tiles.push(`<div class="tile">${img('hydro_sprout_wet')}<span>${ICON.up}</span><small>Your seeds are growing</small></div>`);
+    if (summary.unwatered > 0) tiles.push(`<div class="tile warn">${img('hydro_sown_dry')}<span>${ICON.water}${ICON.bang}</span><small>Water these each day</small></div>`);
+    if (summary.spread > 0) tiles.push(`<div class="tile warn">${img('cogon')}<span>+${summary.spread}</span><small>New grass to clear</small></div>`);
     const win = summary.wonTonight
       ? `<div class="win">🌅 ${NATIVE_ANIMALS.map((a) => img(a)).join('')} ${ICON.heart}</div>`
       : '';
     const quiet = tiles.length === 0 && summary.postcards.length === 0 ? `<p class="pict">🌙 ${ICON.sparkle}</p>` : '';
     const { root, close } = overlay(
       'morning',
-      `<div class="sunrise">${ICON.day}<b>${summary.day}</b></div>
+      `<div class="morning-heading">Good morning, little helper.</div><div class="sunrise">${ICON.day}<b>Day ${summary.day}</b></div>
        ${win}
        <div class="tiles">${tiles.join('')}</div>
        ${quiet}
@@ -276,7 +277,7 @@ export function showMorning(summary: NightSummary, state: GameState): Promise<vo
        <div class="mini-health">${(['sand', 'oak', 'rosemary'] as const)
          .map((z) => `<span>${img(z === 'sand' ? 'palmetto' : z)}<i style="width:${zoneHealth(state, z)}%"></i></span>`)
          .join('')}</div>
-       <button class="primary big-icon" data-close aria-label="Start the day">▶</button>`,
+       <button class="primary" data-close aria-label="Start the day">▶ Start the day</button>`,
     );
     const done = () => {
       close();
@@ -294,31 +295,27 @@ export function showMonitor(state: GameState): Promise<void> {
       const back = pop > 0;
       const t = trend(state, sp);
       const arrow = t > 0 ? ICON.up : t < 0 ? ICON.down : '';
-      return `<div class="mon-row${back ? '' : ' away'}">
-        ${img(sp, back ? 'mon-animal' : 'mon-animal unknown')}
-        <b class="mon-pop">${back ? pop : '–'}<small>${arrow}</small></b>
-        ${back ? sparkline(state, sp) : '<span class="spark"></span>'}
-        ${needsRow(state, sp, !back)}
-        <span class="mon-seen">${ICON.eye}${state.sightings[sp] ?? 0}</span>
-      </div>`;
+      return `<div class="mon-row${back ? '' : ' away'}">${img(sp, back ? 'mon-animal' : 'mon-animal unknown')}
+        <div class="mon-details"><div class="mon-identity"><h3>${escape(speciesName(sp))}</h3><b class="mon-pop">${back ? `${pop} ${pop === 1 ? 'neighbor' : 'neighbors'} ${arrow}` : 'Not home yet'}</b><span>${back ? `${state.sightings[sp] ?? 0} sightings` : 'How to welcome them'}</span></div>
+        ${needsRow(state, sp, !back)}${back ? sparkline(state, sp) : ''}</div></div>`;
     }).join('');
     const zones = (['sand', 'oak', 'rosemary'] as const)
       .map((z) => {
         const h = zoneHealth(state, z);
-        return `<div class="mon-zone">${img(z === 'sand' ? 'palmetto' : z)}<span class="bar"><i style="width:${h}%"></i></span><b>${h}</b></div>`;
+        return `<div class="mon-zone">${img(z === 'sand' ? 'palmetto' : z)}<span>${ZONE_NAME[z]}</span><span class="bar"><i style="width:${h}%"></i></span><b>${h}% restored</b></div>`;
       })
       .join('');
     const s = state.stats;
     const { root, close } = overlay(
       'monitor',
       `<div class="screen">
-         <div class="mon-head">${ICON.monitor}<span>${ICON.day}${state.day}</span>
+         <div class="monitor-heading"><div><div class="eyebrow">Home is a healthier habitat</div><h2>Our little neighbors</h2><p>Day ${state.day} · Meet their needs to help them return.</p></div>
            <button class="icon-btn" data-close aria-label="Close">✕</button></div>
          ${rows}
          <div class="mon-zones">${zones}</div>
          <div class="mon-stats">
-           <span>${img('cogon')}${s.invasivesRemoved}</span><span>${ICON.bag}${s.trashCollected}</span>
-           <span>${ICON.plant}${s.planted}</span><span>${ICON.truck}${s.relocated}</span>
+           <span>${img('cogon')}${s.invasivesRemoved}<small class="stat-label">cleared</small></span><span>${ICON.bag}${s.trashCollected}<small class="stat-label">trash gathered</small></span>
+           <span>${ICON.plant}${s.planted}<small class="stat-label">planted</small></span><span>${ICON.truck}${s.relocated}<small class="stat-label">relocated</small></span>
          </div>
        </div>`,
     );
@@ -363,18 +360,18 @@ export function showMenu(state: GameState): Promise<'resume' | 'new'> {
     const s = state.stats;
     const { root, close } = overlay(
       'menu',
-      `<h2>⏸</h2>
+      `<h2>A little breather</h2>
        <div class="mon-stats">
          <span>${img('cogon')}${s.invasivesRemoved}</span><span>${ICON.bag}${s.trashCollected}</span>
          <span>${ICON.plant}${s.planted}</span><span>${ICON.truck}${s.relocated}</span>
          <span>${ICON.postcard}${state.postcards.length}</span>
        </div>
        <div class="row">
-         <button class="primary big-icon" data-act="resume" aria-label="Resume">▶</button>
-         <button class="big-icon toggle${audio.musicOn ? '' : ' muted'}" data-act="music" aria-label="Music" aria-pressed="${audio.musicOn}">🎵</button>
-         <button class="big-icon toggle${audio.sfxOn ? '' : ' muted'}" data-act="sfx" aria-label="Sound effects" aria-pressed="${audio.sfxOn}">🔔</button>
+         <button class="primary big-icon" data-act="resume" aria-label="Resume">▶<span class="menu-label">Keep exploring</span></button>
+         <button class="big-icon toggle${audio.musicOn ? '' : ' muted'}" data-act="music" aria-label="Music" aria-pressed="${audio.musicOn}">🎵<span class="menu-label">Music</span></button>
+         <button class="big-icon toggle${audio.sfxOn ? '' : ' muted'}" data-act="sfx" aria-label="Sound effects" aria-pressed="${audio.sfxOn}">🔔<span class="menu-label">Sounds</span></button>
          ${document.fullscreenEnabled ? '<button class="big-icon" data-act="full" aria-label="Fullscreen">⛶</button>' : ''}
-         <button class="big-icon" data-act="new" aria-label="New game">✦</button>
+         <button class="big-icon" data-act="new" aria-label="New game">✦<span class="menu-label">Start fresh</span></button>
        </div>`,
     );
     root.addEventListener('click', (e) => {

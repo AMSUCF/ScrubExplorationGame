@@ -12,6 +12,9 @@ import { drain } from '../systems/battery';
 import { Grid, Tile, findPath } from '../systems/pathfind';
 import { clearSave, saveGame } from '../systems/save';
 import { GameState, isAnimal, newGame } from '../systems/state';
+import { vineHost } from '../data/visuals';
+import { showVineCare } from '../ui/vineCare';
+import { targetInfo } from '../ui/targetInfo';
 import { keyVector, setKeyHandlers } from '../ui/input';
 import { isOverlayOpen, showBoard, showDiscovery, showFieldGuide, showMenu, showMonitor } from '../ui/overlays';
 import { RadialMenu } from '../ui/radial';
@@ -24,6 +27,8 @@ export interface Interactable {
   r: number;
   /** How close the robot's feet must be to use it. */
   reach?: number;
+  /** Art bounds can extend well above a small walkable trunk footprint. */
+  bounds?: { x: number; y: number; w: number; h: number };
 }
 
 const TAP_SLOP = 8;
@@ -86,6 +91,7 @@ export abstract class PlayScene extends Phaser.Scene {
       document.removeEventListener('visibilitychange', save);
       window.removeEventListener('pagehide', save);
       this.menu.hide();
+      this.menu.destroy();
       setKeyHandlers(null);
       if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
     });
@@ -99,8 +105,10 @@ export abstract class PlayScene extends Phaser.Scene {
     let best: Interactable | null = null;
     let bestD = Infinity;
     for (const it of this.interactables()) {
-      const d = Math.hypot(wx - it.x, wy - it.y);
-      if (d < it.r + TAP_SLOP && d < bestD) {
+      const b = it.bounds;
+      const d = b ? Math.hypot((wx - b.x - b.w / 2) / (b.w / 2), (wy - b.y - b.h / 2) / (b.h / 2)) : Math.hypot(wx - it.x, wy - it.y) / (it.r + TAP_SLOP);
+      const inside = b ? wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h : d < 1;
+      if (inside && d < bestD) {
         best = it;
         bestD = d;
       }
@@ -128,6 +136,7 @@ export abstract class PlayScene extends Phaser.Scene {
   }
 
   private onPointerMove(p: Phaser.Input.Pointer): void {
+    if (this.busy || isOverlayOpen()) { this.down = null; return; }
     if (this.down && p.isDown) {
       if (!this.down.steering && Math.hypot(p.x - this.down.x, p.y - this.down.y) > DRAG_START) this.down.steering = true;
       if (this.down.steering) this.robot.steer(p.worldX, p.worldY);
@@ -233,7 +242,7 @@ export abstract class PlayScene extends Phaser.Scene {
       return;
     }
     this.menuTarget = it;
-    this.menu.show(actions, (a) => this.choose(a));
+    this.menu.show(actions, (a) => this.choose(a), targetInfo(this.state, it.target), () => this.closeMenu());
     audio.sfx('open');
     this.positionMenu();
   }
@@ -266,6 +275,7 @@ export abstract class PlayScene extends Phaser.Scene {
   }
 
   private choose(a: Action): void {
+    if (this.busy || isOverlayOpen()) return;
     const it = this.liveMenuTarget();
     if (!it) return this.closeMenu();
     const instant = a.verb === 'info' || a.verb === 'goHome' || a.verb === 'board' || a.verb === 'monitor';
@@ -297,7 +307,7 @@ export abstract class PlayScene extends Phaser.Scene {
 
   // --- doing -------------------------------------------------------------------------------
 
-  private async perform(a: Action, it: Interactable): Promise<void> {
+  protected async perform(a: Action, it: Interactable): Promise<void> {
     // Re-resolve the action against current state (things may have changed while walking).
     const fresh = getActions(this.state, it.target).find((x) => x.verb === a.verb && x.param === a.param);
     if (!fresh) return;
@@ -305,6 +315,24 @@ export abstract class PlayScene extends Phaser.Scene {
       this.closeMenu();
       this.goHome();
       return;
+    }
+    if (!fresh.enabled) return;
+    const vine = a.verb === 'rescue'
+      ? this.state.entities.find(e => e.kind === 'invasivePlant' && e.species === 'airpotato' && String(e.id) === a.param)
+      : it.target.type === 'entity' && it.target.entity.kind === 'invasivePlant' && it.target.entity.species === 'airpotato' && a.verb === 'remove' ? it.target.entity : undefined;
+    if (vine?.kind === 'invasivePlant') {
+      this.busy = true; this.robot.stop(); this.down = null; this.menu.hide();
+      let complete = false;
+      try { complete = await showVineCare(vine, vineHost(this.state, vine), () => this.saveNow()); }
+      finally { this.busy = false; }
+      if (!complete) { this.openMenu(it); return; }
+    } else if (a.verb === 'remove') {
+      this.busy = true; this.robot.stop();
+      const name = targetInfo(this.state, it.target).name;
+      services.hud?.setWork(`${a.icon} ${a.label} · ${name}`, 850);
+      await new Promise<void>(resolve => this.time.delayedCall(850, () => resolve()));
+      services.hud?.setWork(null);
+      this.busy = false;
     }
     const hpBefore = it.target.type === 'entity' && 'hp' in it.target.entity ? it.target.entity.hp : 0;
     const res = performAction(this.state, fresh);
@@ -331,7 +359,9 @@ export abstract class PlayScene extends Phaser.Scene {
     const live = this.liveMenuTarget();
     if (live && this.menuTarget) {
       const next = getActions(this.state, live.target);
-      if (next.length && next.some((n) => n.enabled)) this.menu.setActions(next);
+      if (next.length && next.some((n) => n.enabled)) {
+        this.menu.show(next, (action) => this.choose(action), targetInfo(this.state, live.target), () => this.closeMenu());
+      }
       else this.closeMenu();
     } else {
       this.closeMenu();
@@ -342,6 +372,7 @@ export abstract class PlayScene extends Phaser.Scene {
   protected goHome(): void {}
 
   protected feedback(res: ActionResult): void {
+    if (res.note) services.hud?.toast(res.note);
     if (res.mood) this.robot.emote(res.mood);
     const at = res.at ?? { x: this.robot.x, y: this.robot.y - 10 };
     res.gains.forEach((g, i) => {
@@ -418,7 +449,8 @@ export abstract class PlayScene extends Phaser.Scene {
   // --- frame -------------------------------------------------------------------------------
 
   protected updatePlay(delta: number): void {
-    const dt = Math.min(delta, 50);
+    if (isOverlayOpen()) { this.down = null; this.robot.stop(); audio.motor(0); return; }
+    const dt = Math.min(delta, 100);
     const keys = this.busy ? { x: 0, y: 0 } : keyVector();
     const mag = this.robot.update(dt, keys, this.robotSpeed(), !!this.state.crate);
     audio.motor(mag);

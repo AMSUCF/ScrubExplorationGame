@@ -57,7 +57,7 @@ try {
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('World'));
-  await page.waitForTimeout(450);
+  await page.waitForFunction(() => !window.__game.scene.getScene('World').cameras.main.fadeEffect.isRunning);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(250);
   await page.screenshot({ path: 'screenshots/world-final.png' });
@@ -66,6 +66,45 @@ try {
     return g.cache.json.get('art-manifest').filter(k => !k.startsWith('room') && !k.startsWith('ground_') && !g.textures.exists(k));
   });
   assert.deepEqual(missing, [], 'Production illustrations missing Phaser textures');
+
+  const materials = await page.evaluate(() => {
+    const c = window.__game.textures.get('ground').getContext();
+    return [[320, 768], [1040, 240], [1504, 944]].map(([x, y]) => {
+      const pixels = c.getImageData(x - 40, y - 40, 80, 80).data, sum = [0, 0, 0];
+      for (let n = 0; n < pixels.length; n += 4) for (let k = 0; k < 3; k++) sum[k] += pixels[n + k];
+      return sum.map(n => n / 6400);
+    });
+  });
+  const luminance = channels => channels.reduce((a, b) => a + b, 0) / 3;
+  assert(luminance(materials[1]) + 25 < luminance(materials[2]), 'Oak litter and pale lichen habitats lost their distinct materials');
+  assert(materials[2][2] > materials[0][2] + 5, 'White quartz/lichen has mixed with warm scrub sand');
+  const canopies = await page.evaluate(() => {
+    const w = window.__game.scene.getScene('World');
+    return ['oak', 'hickory', 'palmetto', 'rosemary'].map(species => {
+      const e = w.state.entities.find(e => e.kind === 'nativePlant' && e.species === species);
+      const image = w.views.get(e.id).sprite;
+      return { species, texture: image.texture.key, width: image.displayWidth, height: image.displayHeight };
+    });
+  });
+  for (const p of canopies) assert.equal(p.texture, `art:${p.species}`, `${p.species}: canopy uses a downsampled icon`);
+  assert(canopies[0].width > 135 && canopies[1].height > 160 && canopies[2].height < canopies[0].height, 'Native canopy hierarchy changed');
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  for (const [name, x, y] of [['vine-grove', 1000, 850], ['oak-scrub', 1040, 280], ['sand-scrub', 350, 750], ['rosemary-bald', 1500, 920]]) {
+    await page.evaluate(([x, y]) => {
+      const w = window.__game.scene.getScene('World');
+      w.robot.setPosition(x, y + 70); w.cameras.main.stopFollow(); w.cameras.main.centerOn(x, y);
+    }, [x, y]);
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: `screenshots/nature-${name}.png` });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    const w = window.__game.scene.getScene('World');
+    w.robot.setPosition(1000, 950); w.cameras.main.centerOn(1000, 850);
+  });
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: 'screenshots/nature-grove-phone.png' });
 
   for (let level = 0; level < 3; level++) {
     await page.evaluate(level => {
@@ -94,7 +133,7 @@ try {
 
   assert.deepEqual(errors, [], 'Browser errors');
   assert.deepEqual(external, [], 'Unexpected external HTTP requests');
-  console.log('ART SMOKE OK — responsive title, local fonts, all sprites, three rooms, sound, continue/new-game safeguard; no browser errors or external HTTP requests.');
+  console.log('ART SMOKE OK — responsive title, local fonts, full-resolution canopies, distinct habitat grounds, desktop/phone grove views, all sprites, three rooms, sound, continue/new-game safeguard; no browser errors or external HTTP requests.');
 } finally {
   await browser?.close();
   await server.close();

@@ -15,7 +15,9 @@ import { trayStage } from '../systems/nursery';
 import { Grid } from '../systems/pathfind';
 import { NATIVE_ANIMALS } from '../systems/population';
 import { GameState } from '../systems/state';
-import { showMorning } from '../ui/overlays';
+import { isOverlayOpen, showMonitor, showMorning } from '../ui/overlays';
+import { showNursery } from '../ui/nursery';
+import { services } from '../services';
 import { Interactable, PlayScene } from './PlayScene';
 
 const S = 1 / ART_SCALE;
@@ -78,6 +80,7 @@ export class HomeScene extends PlayScene {
     cam.fadeIn(300, 255, 248, 235);
 
     this.setupPlay();
+    this.addHomeNavigation();
     audio.music('home');
     audio.ambient('home');
     this.saveNow();
@@ -87,26 +90,38 @@ export class HomeScene extends PlayScene {
     const dpr = (this.registry.get('dpr') as number) ?? 1;
     const { w, h } = this.size;
     const vw = this.scale.width / dpr;
-    const vh = this.scale.height / dpr - 150; // leave room for the HUD
+    const vh = this.scale.height / dpr - 185; // room for readable HUD and home navigation
     const fitW = vw / (w * T + 24);
     const fitH = vh / (h * T + 24);
-    // Fit the whole room; on tall phone screens zoom in further and let the camera follow the robot.
-    let zoom = Math.min(fitW, fitH);
-    if (fitH > fitW * 1.3) zoom = Math.min(fitH, fitW * 1.6);
-    zoom = Phaser.Math.Clamp(zoom, 0.6, 2.6);
+    // A stable whole-room overview; large, touch-friendly detail views live in the home toolbar.
+    const zoom = Phaser.Math.Clamp(Math.min(fitW, fitH), 0.35, 2.6);
     const cam = this.cameras.main;
     cam.setZoom(zoom * dpr);
-    const fits = zoom <= fitW + 1e-3;
-    if (fits) {
-      cam.stopFollow();
-      cam.removeBounds();
-      cam.centerOn((w * T) / 2, (h * T) / 2 - 40 / zoom);
-    } else {
-      const extraY = 150 / zoom;
-      cam.setBounds(-12, -12 - extraY, w * T + 24, h * T + 24 + extraY);
-      cam.startFollow(this.robot.body, true, 0.12, 0.12);
-    }
+    cam.stopFollow(); cam.removeBounds();
+    cam.centerOn((w * T) / 2, (h * T) / 2 - 20 / zoom);
   };
+
+  private addHomeNavigation(): void {
+    const nav = document.createElement('nav'); nav.className = 'home-nav'; nav.setAttribute('aria-label', 'Inside the pod');
+    nav.innerHTML = [['nursery', 'hydro_ready_wet', 'Nursery'], ['wildlife', 'monitor', 'Wildlife'], ['workshop', 'bench', 'Workshop'], ['rest', 'cradle', 'Rest']].map(([act, tex, text]) => `<button data-home="${act}" aria-label="${text}"><img src="${services.icon(tex)}" alt=""/><span>${text}</span></button>`).join('');
+    nav.addEventListener('click', async e => {
+      const action = (e.target as Element).closest<HTMLElement>('[data-home]')?.dataset.home;
+      if (!action || this.busy || isOverlayOpen()) return;
+      this.closeMenu(); this.robot.stop();
+      if (action === 'wildlife') { await showMonitor(this.state); return; }
+      if (action === 'nursery') {
+        await showNursery(this.state, async a => {
+          const it = this.interactables().find(it => it.target.type === 'home' && a.target.type === 'home' && it.target.item.kind === 'slot' && it.target.item.index === a.target.item.index);
+          if (it) await this.perform(a, it);
+        });
+        return;
+      }
+      const it = this.interactables().find(it => it.target.type === 'home' && it.target.item.kind === (action === 'workshop' ? 'bench' : 'cradle'));
+      if (it) this.openMenu(it);
+    });
+    document.body.appendChild(nav);
+    this.events.once('shutdown', () => nav.remove());
+  }
 
   // --- furniture ---------------------------------------------------------------------------
 
@@ -120,6 +135,7 @@ export class HomeScene extends PlayScene {
   }
 
   private buildFurniture(): void {
+    this.tweens.killTweensOf(this.furniture.getAll());
     this.furniture.removeAll(true);
     this.blockers.clear(true, true);
     const add = <T extends Phaser.GameObjects.GameObject>(o: T) => {
@@ -157,6 +173,12 @@ export class HomeScene extends PlayScene {
       if (it.kind === 'monitor') {
         const led = add(this.add.circle(x + 14, y - 3, 1.4, 0x7fe3b0));
         this.tweens.add({ targets: led, alpha: 0.2, duration: 700, yoyo: true, repeat: -1 });
+      }
+      const labels: Partial<Record<HomeItem['kind'], string>> = { monitor: 'Wildlife', board: 'Memories', bench: 'Workshop', cradle: 'Recharge' };
+      if (labels[it.kind]) {
+        const tex = ITEM_TEX[it.kind]!;
+        const height = this.textures.get(tex).getSourceImage().height / ART_SCALE;
+        add(this.add.text(x, y - height - 5, labels[it.kind]!, { fontFamily: 'Nunito', fontSize: '10px', color: '#5e6a4f', backgroundColor: '#f9efd9', padding: { x: 4, y: 2 } }).setOrigin(.5, 1).setResolution(3));
       }
       for (const t of this.footprint(it)) {
         const zone = this.add.zone(t.tx * T + T / 2, t.ty * T + T / 2, T - 4, T - 6);

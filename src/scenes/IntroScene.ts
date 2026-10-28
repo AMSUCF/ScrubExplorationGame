@@ -10,6 +10,7 @@ import { services } from '../services';
 import { GameState, isAnimal } from '../systems/state';
 import { ICON } from '../data/icons';
 import { renderIcons } from '../ui/icons';
+import { WORLD_SIZE, worldSize } from '../data/visuals';
 
 const S = 1 / ART_SCALE;
 
@@ -37,17 +38,17 @@ export class IntroScene extends Phaser.Scene {
     this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
     for (const e of this.state.entities) {
       if (isAnimal(e)) {
-        this.add.image(e.x, e.y, e.species).setOrigin(0.5, 0.85).setScale(S).setDepth(e.y);
+        this.add.image(e.x, e.y, `art:${e.species}`).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
       } else if (e.kind !== 'burrow') {
         const p = tileCenter(e.tx, e.ty);
-        const img = this.add.image(p.x, p.y + 10, e.species).setOrigin(0.5, 1).setScale(S).setDepth(p.y + 10);
+        const img = this.add.image(p.x, p.y + 10, `art:${e.species}`).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
         if (e.kind === 'nativePlant') img.setTint(0xb8b08a);
       }
     }
     const recycler = tileCenter(BASE_CENTER.tx - 4, BASE_CENTER.ty + 1);
     const pad = tileCenter(BASE_CENTER.tx + 4, BASE_CENTER.ty + 1);
-    this.add.image(recycler.x, recycler.y + 18, 'recycler').setOrigin(0.5, 1).setScale(S).setDepth(recycler.y + 18);
-    this.add.image(pad.x, pad.y + 18, 'pad').setOrigin(0.5, 1).setScale(S).setDepth(pad.y + 18);
+    this.add.image(recycler.x, recycler.y + 18, 'art:recycler').setOrigin(0.5, 1).setDisplaySize(...WORLD_SIZE.recycler).setDepth(recycler.y + 18);
+    this.add.image(pad.x, pad.y + 18, 'art:pad').setOrigin(0.5, 1).setDisplaySize(...WORLD_SIZE.pad).setDepth(pad.y + 18);
 
     const cam = this.cameras.main;
     const dpr = (this.registry.get('dpr') as number) ?? 1;
@@ -64,7 +65,7 @@ export class IntroScene extends Phaser.Scene {
     this.tweens.add({ targets: sky, alpha: 0, duration: 4200, delay: 1200 });
 
     // The pod falls with a fiery trail.
-    const pod = this.add.image(land.x, landY - 520, 'pod_shut').setOrigin(0.5, 1).setScale(S).setDepth(landY);
+    const pod = this.add.image(land.x, landY - 520, 'art:pod_shut').setOrigin(0.5, 1).setDisplaySize(...WORLD_SIZE.pod_shut).setDepth(landY);
     const flame = this.add.image(land.x, landY - 520, 'flame').setOrigin(0.5, 1).setScale(S * 1.4).setDepth(landY - 1).setAngle(180);
     const shadow = this.add.ellipse(land.x, landY - 4, 20, 6, 0x3d2d19, 0.25).setDepth(1);
     this.tweens.add({ targets: shadow, width: 90, height: 16, alpha: 0.35, duration: 1800, ease: 'Quad.In' });
@@ -73,7 +74,7 @@ export class IntroScene extends Phaser.Scene {
       y: landY,
       duration: 1800,
       ease: 'Quad.In',
-      onUpdate: () => flame.setPosition(pod.x, pod.y - 66),
+      onUpdate: () => flame.setPosition(pod.x, pod.y - 99),
       onComplete: () => this.landed(pod, flame, land.x, landY),
     });
 
@@ -98,7 +99,7 @@ export class IntroScene extends Phaser.Scene {
 
     // Door pops open; the robot peeks out.
     this.time.delayedCall(900, () => {
-      pod.setTexture('pod0');
+      pod.setTexture('art:pod0').setDisplaySize(...WORLD_SIZE.pod0);
       audio.sfx('pop');
       audio.robot('wake', { delay: 0.3 });
       const robot = new Robot(this, x, y - 22);

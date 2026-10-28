@@ -20,6 +20,8 @@ import { canAfford, spend } from './battery';
 import { UPGRADE_COST, UpgradeId, buyUpgrade, clearVase, placeSprig, upgradeStatus } from './home';
 import { pot, sow, trayStage, water } from './nursery';
 import { Tile } from './pathfind';
+import { chokingVines } from '../data/visuals';
+import { careStage } from './vineCare';
 import {
   Entity,
   GameState,
@@ -60,7 +62,8 @@ export type Verb =
   | 'upgrade'
   | 'exit'
   | 'plant'
-  | 'goHome';
+  | 'goHome'
+  | 'rescue';
 
 export interface Action {
   verb: Verb;
@@ -68,7 +71,7 @@ export interface Action {
   icon: string;
   /** Texture key drawn on the button instead of / beside the emoji (species pictures). */
   tex?: string;
-  /** Accessible name for screen readers and tooltips — never shown as in-game dialogue. */
+  /** Short visible tool label, also used as the accessible button name. */
   label: string;
   cost: number;
   parts?: number;
@@ -102,6 +105,8 @@ export interface ActionResult {
   open?: 'monitor' | 'board' | 'guide';
   guideId?: SpeciesId;
   rescued: NativePlantEntity[];
+  note?: string;
+  friend?: number;
 }
 
 const VERB_ICON: Record<InvasivePlantId | HazardId, string> = {
@@ -156,10 +161,11 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
   switch (e.kind) {
     case 'invasivePlant': {
       const stats = INVASIVE_PLANTS[e.species];
-      const full = stats.bulbils > 0 && state.bag >= BAG_CAPACITY;
+      const full = stats.bulbils > 0 && state.bag + stats.bulbils > BAG_CAPACITY;
       const a = full
         ? off(target, 'remove', VERB_ICON[e.species], stats.verb, ICON.bag)
         : act(state, target, 'remove', VERB_ICON[e.species], stats.verb, stats.cost);
+      if (e.species === 'airpotato') { a.label = 'Untangle vines'; a.icon = ICON.cut; }
       return [a, ...info];
     }
     case 'hazard': {
@@ -173,7 +179,12 @@ function entityActions(state: GameState, e: Entity, target: Target): Action[] {
     case 'nativePlant': {
       const tex = e.species;
       if (isChoked(state, e)) {
-        return [off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.sad, { tex }), ...info];
+        const vine = chokingVines(state, e)[0];
+        const bagFull = state.bag + INVASIVE_PLANTS.airpotato.bulbils > BAG_CAPACITY;
+        const rescue = vine ? [act(state, target, 'rescue', ICON.cut, 'Free the vines', INVASIVE_PLANTS.airpotato.cost, {
+          param: String(vine.id), enabled: !bagFull && canAfford(state, INVASIVE_PLANTS.airpotato.cost), block: bagFull ? ICON.bag : ICON.battery,
+        })] : [];
+        return [...rescue, off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.sad, { tex }), ...info];
       }
       if (e.planted && state.day - e.plantedDay < 2) {
         return [off(target, 'collect', ICON.seeds, 'Collect seeds', ICON.wait, { tex }), ...info];
@@ -334,10 +345,17 @@ function targetPos(t: Target): { x: number; y: number } | undefined {
 
 export function performAction(state: GameState, a: Action): ActionResult {
   if (!a.enabled) return result({ ok: false, mood: 'sad' });
+  const targetEntity = a.target.type === 'entity' ? a.target.entity : null;
+  if (targetEntity && !state.entities.some(e => e.id === targetEntity.id)) return result({ ok: false });
+  const workEntity = a.verb === 'rescue' ? state.entities.find(e => String(e.id) === a.param && e.kind === 'invasivePlant' && e.species === 'airpotato') : targetEntity;
+  if ((a.verb === 'remove' || a.verb === 'rescue') && workEntity?.kind === 'invasivePlant' && workEntity.species === 'airpotato') {
+    if (!workEntity.care || careStage(workEntity.care) !== 'done' || state.bag + INVASIVE_PLANTS.airpotato.bulbils > BAG_CAPACITY) return result({ ok: false });
+  }
+  if (a.verb === 'rescue' && !workEntity) return result({ ok: false });
   if (!spend(state, a.cost)) return result({ ok: false, mood: 'sad' });
 
   const t = a.target;
-  const entity = t.type === 'entity' ? t.entity : null;
+  const entity = workEntity;
   const item = t.type === 'home' ? t.item : null;
   const at = targetPos(t);
 
@@ -354,6 +372,7 @@ export function performAction(state: GameState, a: Action): ActionResult {
       return result({ open: 'guide', guideId: species ?? undefined });
     }
 
+    case 'rescue':
     case 'remove': {
       if (!entity || (entity.kind !== 'invasivePlant' && entity.kind !== 'hazard')) return result({ ok: false });
       entity.hp--;
@@ -376,7 +395,9 @@ export function performAction(state: GameState, a: Action): ActionResult {
         }
       }
       const rescued = refreshRescues(state);
-      return result({ fx: 'pop', at, gains, rescued, mood: rescued.length ? 'love' : 'happy' });
+      const careful = entity.kind === 'invasivePlant' && entity.species === 'airpotato';
+      if (careful && entity.care?.brushes === 0) { state.parts++; gains.push({ icon: ICON.parts, n: 1 }); }
+      return result({ fx: 'pop', at, gains, rescued, mood: rescued.length ? 'love' : 'happy', note: careful ? 'Vines and bulbils gathered. A little more room to breathe.' : rescued.length ? 'Sunlight reaches the native leaves again!' : undefined });
     }
 
     case 'collect': {
@@ -408,7 +429,12 @@ export function performAction(state: GameState, a: Action): ActionResult {
 
     case 'greet': {
       if (entity?.kind !== 'nativeAnimal') return result({ ok: false });
-      return result({ fx: 'sparkle', at, mood: 'love' });
+      state.encounters ??= [];
+      const key = `${state.day}:${entity.species}`;
+      const first = !state.encounters.includes(key);
+      if (first) { state.encounters.push(key); state.parts++; }
+      const moments = { tortoise: 'A slow, sunny stretch. Your tortoise friend found a shiny part!', mouse: 'Peekaboo! A little mouse leaves a tiny treasure.', jay: 'An acorn inspection… approved! A scrub-jay brings you a treasure.', indigo: 'A gentle ribbon of blue curls hello. Something shiny in the sand!' };
+      return result({ fx: 'sparkle', at, mood: 'love', friend: entity.id, gains: first ? [{ icon: ICON.parts, n: 1 }] : [], note: first ? moments[entity.species] : 'Your little neighbor is happy to see you again.' });
     }
 
     case 'enter':

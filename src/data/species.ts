@@ -299,7 +299,7 @@ export interface InvasivePlantStats {
 export const INVASIVE_PLANTS: Record<InvasivePlantId, InvasivePlantStats> = {
   cogon: { hp: 1, verb: 'Pull', cost: 4, blocks: false, bulbils: 0 },
   pepper: { hp: 3, verb: 'Cut', cost: 3, blocks: true, bulbils: 0 },
-  airpotato: { hp: 1, verb: 'Pull', cost: 4, blocks: false, bulbils: 2 },
+  airpotato: { hp: 1, verb: 'Untangle vines', cost: 4, blocks: false, bulbils: 3 },
   natal: { hp: 1, verb: 'Pull', cost: 3, blocks: false, bulbils: 0 },
 };
 

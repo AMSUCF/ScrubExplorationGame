@@ -13,6 +13,8 @@ import { Grid, Tile } from '../systems/pathfind';
 import { recordSighting, unmetNeeds } from '../systems/population';
 import { Entity, GameState, isAnimal, isChoked, pxToTile } from '../systems/state';
 import { Interactable, PlayScene } from './PlayScene';
+import { WORLD_SIZE, vineHost, worldSize } from '../data/visuals';
+import { isOverlayOpen } from '../ui/overlays';
 
 const S = 1 / ART_SCALE;
 const SIGHT_RANGE = 120;
@@ -35,6 +37,7 @@ export class WorldScene extends PlayScene {
   private pointer: Phaser.GameObjects.Image | null = null;
   private warnedEmpty = false;
   private duskHeard = -1;
+  private habitatArt: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super('World');
@@ -48,6 +51,7 @@ export class WorldScene extends PlayScene {
     this.busy = false;
     this.warnedEmpty = false;
     this.pointer = null;
+    this.habitatArt = [];
   }
 
   create(): void {
@@ -58,7 +62,8 @@ export class WorldScene extends PlayScene {
     for (const st of STATIONS) {
       const p = tileCenter(st.tx, st.ty);
       const bottom = p.y + TILE / 2 + 2;
-      const img = this.add.image(p.x, bottom, this.stationTexture(st)).setOrigin(0.5, 1).setScale(S).setDepth(bottom);
+      const key = this.stationTexture(st);
+      const img = this.add.image(p.x, bottom, `art:${key}`).setOrigin(0.5, 1).setDisplaySize(...WORLD_SIZE[key]).setDepth(bottom);
       this.stationSprites.set(st, img);
       const tiles = stationTiles(st);
       const w = st.w * TILE - 6;
@@ -76,9 +81,9 @@ export class WorldScene extends PlayScene {
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
-    cam.startFollow(this.robot.body, true, 0.12, 0.12);
     cam.setBackgroundColor('#6f8a5c');
     this.applyZoom();
+    cam.startFollow(this.robot.body, true, 0.12, 0.12);
     this.scale.on('resize', this.applyZoom, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.applyZoom, this));
     cam.fadeIn(350, 255, 248, 235);
@@ -113,6 +118,7 @@ export class WorldScene extends PlayScene {
   }
 
   private blocks(e: Entity): boolean {
+    if (e.kind === 'nativePlant') return e.species === 'oak' || e.species === 'hickory';
     if (e.kind === 'invasivePlant') return INVASIVE_PLANTS[e.species].blocks;
     if (e.kind === 'hazard') return HAZARDS[e.species].blocks;
     return false;
@@ -135,16 +141,22 @@ export class WorldScene extends PlayScene {
       const p = tileCenter(st.tx, st.ty);
       out.push(
         st.kind === 'pod'
-          ? { target: { type: 'station', station: st }, x: p.x, y: p.y + 2, r: 30, reach: REACH + 4 }
+          ? { target: { type: 'station', station: st }, x: p.x, y: p.y + 2, r: 30, reach: REACH + 4, bounds: { x: p.x - 72, y: p.y + 18 - 100, w: 144, h: 100 } }
           : { target: { type: 'station', station: st }, x: p.x, y: p.y, r: 20 },
       );
     }
     for (const e of this.state.entities) {
       if (e.kind === 'burrow') continue;
-      if (isAnimal(e)) out.push({ target: { type: 'entity', entity: e }, x: e.x, y: e.y - 6, r: 16 });
+      if (isAnimal(e)) {
+        const [w, h] = worldSize(e, this.state.day);
+        out.push({ target: { type: 'entity', entity: e }, x: e.x, y: e.y - 6, r: 16,
+          bounds: { x: e.x - w / 2, y: e.y - h * .85, w, h: h * .85 } });
+      }
       else {
         const p = tileCenter(e.tx, e.ty);
-        out.push({ target: { type: 'entity', entity: e }, x: p.x, y: p.y, r: 17 });
+        const view = this.views.get(e.id)?.sprite;
+        const [w, h] = view ? [view.displayWidth, view.displayHeight] : worldSize(e, this.state.day);
+        out.push({ target: { type: 'entity', entity: e }, x: p.x, y: p.y, r: 20, bounds: { x: p.x - w / 2, y: p.y + 10 - h, w, h } });
       }
     }
     return out;
@@ -188,16 +200,15 @@ export class WorldScene extends PlayScene {
         view = this.createView(e);
         this.views.set(e.id, view);
         if (!initial) {
-          const target = view.sprite.scale;
+          const scaleX = view.sprite.scaleX, scaleY = view.sprite.scaleY;
           view.sprite.setScale(0);
-          this.tweens.add({ targets: view.sprite, scale: target, duration: 350, ease: 'Back.Out' });
+          this.tweens.add({ targets: view.sprite, scaleX, scaleY, duration: 350, ease: 'Back.Out' });
         }
       }
       if (e.kind === 'nativePlant') {
-        if (isChoked(this.state, e)) view.sprite.setTint(0xb8b08a);
+        if (isChoked(this.state, e)) view.sprite.setTint(0xd1d5bd);
         else view.sprite.clearTint();
-        const young = e.planted && this.state.day - e.plantedDay < 2;
-        if (!this.tweens.isTweening(view.sprite)) view.sprite.setScale(S * (young ? 0.6 : 1));
+        if (!this.tweens.isTweening(view.sprite)) view.sprite.setDisplaySize(...worldSize(e, this.state.day));
       }
     }
     for (const [id, view] of this.views) {
@@ -207,20 +218,75 @@ export class WorldScene extends PlayScene {
       view.bubble?.destroy();
       this.tweens.add({ targets: view.sprite, scale: 0, alpha: 0, duration: 220, onComplete: () => view.sprite.destroy() });
     }
-    for (const [st, img] of this.stationSprites) img.setTexture(this.stationTexture(st));
+    for (const [st, img] of this.stationSprites) img.setTexture(`art:${this.stationTexture(st)}`).setDisplaySize(...WORLD_SIZE[this.stationTexture(st)]);
+    this.drawHabitat();
   }
 
   private createView(e: Entity): EntityView {
     if (isAnimal(e)) {
-      const sprite = this.add.image(e.x, e.y, e.species).setOrigin(0.5, 0.85).setScale(S).setDepth(e.y);
+      const sprite = this.add.image(e.x, e.y, `art:${e.species}`).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);
       return { sprite, critter: new Critter(e, sprite), nextBubble: this.time.now + 1500 + Math.random() * 4000, bubbleTurn: 0 };
     }
     const p = tileCenter(e.tx, e.ty);
-    if (e.kind === 'burrow') return { sprite: this.add.image(p.x, p.y, 'burrow').setScale(S).setDepth(1) };
-    const sprite = this.add.image(p.x, p.y + 10, e.species).setOrigin(0.5, 1).setScale(S).setDepth(p.y + 10);
+    if (e.kind === 'burrow') return { sprite: this.add.image(p.x, p.y, 'art:burrow').setDisplaySize(...WORLD_SIZE.burrow).setDepth(1) };
+    const sprite = this.add.image(p.x, p.y + 10, `art:${e.species}`).setOrigin(0.5, 1).setDisplaySize(...worldSize(e, this.state.day)).setDepth(p.y + 10);
     const view: EntityView = { sprite };
-    if (this.blocks(e)) view.blocker = this.addBlocker(p.x, p.y + 4, e.kind === 'hazard' ? 26 : 24, 16);
+    if (this.blocks(e)) view.blocker = this.addBlocker(p.x, p.y + 4, e.kind === 'nativePlant' ? 14 : e.kind === 'hazard' ? 26 : 24, e.kind === 'nativePlant' ? 11 : 16);
     return view;
+  }
+
+  /** Roots, climbing stems, and canopy leaves connect the threat to its actual living host. */
+  private drawHabitat(): void {
+    this.habitatArt.forEach(o => o.destroy()); this.habitatArt = [];
+    const keep = <T extends Phaser.GameObjects.GameObject>(o: T): T => { this.habitatArt.push(o); return o; };
+    for (const e of this.state.entities) {
+      if (e.kind === 'nativePlant' || e.kind === 'invasivePlant' && ['pepper', 'thicket'].includes(e.species)) {
+        const p = tileCenter(e.tx, e.ty), [w] = worldSize(e, this.state.day);
+        const litter = e.species === 'oak' || e.species === 'hickory' ? 'litter_oak' : e.species === 'rosemary' ? 'litter_rosemary' : 'litter_sand';
+        keep(this.add.image(p.x + 5, p.y + 3, `art:${litter}`).setDisplaySize(w * 1.05, w * .5).setAlpha(.8).setDepth(-5));
+        const shade = `art:shade_${e.species}`;
+        if (this.textures.exists(shade)) keep(this.add.image(p.x + w * .08, p.y + 8, shade).setDisplaySize(w * .95, w * .32).setDepth(-4));
+      }
+      if (e.kind === 'nativePlant' && !isChoked(this.state, e)) {
+        const p = tileCenter(e.tx, e.ty);
+        const [w] = worldSize(e, this.state.day);
+        for (let i = 0; i < 3; i++) keep(this.add.image(p.x + Math.cos(i * 2.1 + e.id) * w * .33, p.y + 8 + Math.sin(i * 2.1) * 10, 'art:decor_flower').setDisplaySize(9, 11).setDepth(p.y - 2));
+      }
+      if (e.kind !== 'invasivePlant' || e.species !== 'airpotato') continue;
+      const host = vineHost(this.state, e);
+      const view = this.views.get(e.id)?.sprite;
+      if (!host) { view?.setTexture('art:airpotato').setDisplaySize(...worldSize(e, this.state.day)); continue; }
+      const root = tileCenter(e.tx, e.ty), crown = tileCenter(host.tx, host.ty), [w, h] = worldSize(host, this.state.day);
+      view?.setTexture('art:vine_root').setDisplaySize(42, 32);
+      const ropes = keep(this.add.graphics().setDepth(crown.y + 10.3));
+      for (let i = 0; i < 5; i++) {
+        const end = { x: crown.x + (i - 2) * w * .15, y: crown.y + 10 - h * (.58 + (i % 3) * .1) };
+        const c1 = { x: root.x + (i - 2) * 12, y: root.y - 32 }, c2 = { x: end.x + (i % 2 ? -23 : 23), y: end.y + 36 };
+        const curve = new Phaser.Curves.CubicBezier(new Phaser.Math.Vector2(root.x, root.y + 6), new Phaser.Math.Vector2(c1.x, c1.y), new Phaser.Math.Vector2(c2.x, c2.y), new Phaser.Math.Vector2(end.x, end.y));
+        for (const [thickness, color] of [[1.5, 0x596a3c], [.45, 0xa4ad70]]) {
+          ropes.lineStyle(thickness, color, .86).beginPath().moveTo(root.x, root.y + 6);
+          const points = curve.getPoints(24);
+          points.forEach(point => ropes.lineTo(point.x, point.y)); ropes.strokePath();
+        }
+        for (let j = 1; j <= 7; j++) {
+          const at = curve.getPoint(j / 8), side = j % 2 ? -1 : 1, size = 9 + (i + j) % 4;
+          keep(this.add.image(at.x + side * 3, at.y - 1, 'art:vine_leaf').setDisplaySize(size, size * 1.14).setAngle(side * (25 + j * 4)).setDepth(crown.y + 10.4));
+        }
+        if (i % 2 === 0) keep(this.add.image(end.x + 3, end.y + 22, 'art:vine_bulbil').setDisplaySize(5, 7).setDepth(crown.y + 10.5));
+      }
+    }
+  }
+
+  protected feedback(res: ActionResult): void {
+    super.feedback(res);
+    if (res.friend) this.views.get(res.friend)?.critter?.greet(this.robot.x);
+    for (const plant of res.rescued) {
+      const p = tileCenter(plant.tx, plant.ty);
+      for (let i = 0; i < 3; i++) {
+        const butterfly = this.add.image(p.x + i * 12, p.y - 25 - i * 7, 'decor_butterfly').setDisplaySize(16, 13).setDepth(2000);
+        this.tweens.add({ targets: butterfly, x: butterfly.x + 35 - i * 28, y: butterfly.y - 65, alpha: 0, duration: 3000 + i * 300, onComplete: () => butterfly.destroy() });
+      }
+    }
   }
 
   /** A wordless "start here" finger over the first weed by the tutorial plant. */
@@ -336,6 +402,14 @@ export class WorldScene extends PlayScene {
 
   update(_time: number, delta: number): void {
     this.updatePlay(delta);
+    if (isOverlayOpen()) return;
+    // Let the player read the world behind a canopy without changing the tree's depth.
+    for (const e of this.state.entities) {
+      if (e.kind !== 'nativePlant' && e.kind !== 'invasivePlant') continue;
+      const view = this.views.get(e.id); if (!view) continue;
+      const behind = this.robot.y < view.sprite.y - 10 && this.robot.y > view.sprite.y - view.sprite.displayHeight && Math.abs(this.robot.x - view.sprite.x) < view.sprite.displayWidth * .4;
+      view.sprite.setAlpha(behind ? .48 : 1);
+    }
     for (const view of this.views.values()) view.critter?.update(Math.min(delta, 50));
     this.wildlife();
 

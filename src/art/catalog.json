@@ -1,68 +1,4 @@
 {
-  "palmetto": [
-    34,
-    30
-  ],
-  "rosemary": [
-    30,
-    28
-  ],
-  "oak": [
-    38,
-    38
-  ],
-  "hickory": [
-    36,
-    42
-  ],
-  "cogon": [
-    30,
-    30
-  ],
-  "pepper": [
-    44,
-    44
-  ],
-  "airpotato": [
-    34,
-    30
-  ],
-  "natal": [
-    30,
-    30
-  ],
-  "tortoise": [
-    28,
-    20
-  ],
-  "mouse": [
-    14,
-    11
-  ],
-  "jay": [
-    19,
-    16
-  ],
-  "indigo": [
-    41,
-    16
-  ],
-  "cat": [
-    23,
-    18
-  ],
-  "tegu": [
-    30,
-    14
-  ],
-  "iguana": [
-    34,
-    16
-  ],
-  "anole": [
-    16,
-    8
-  ],
   "robot": [
     36,
     36
@@ -119,30 +55,6 @@
     40,
     32
   ],
-  "thicket": [
-    40,
-    36
-  ],
-  "burrow": [
-    30,
-    20
-  ],
-  "ground_sand": [
-    128,
-    128
-  ],
-  "ground_oak": [
-    128,
-    128
-  ],
-  "ground_rosemary": [
-    128,
-    128
-  ],
-  "ground_base": [
-    128,
-    128
-  ],
   "room0": [
     384,
     256
@@ -186,22 +98,6 @@
   "hydro_ready_wet": [
     28,
     36
-  ],
-  "sprig_palmetto": [
-    12,
-    21
-  ],
-  "sprig_rosemary": [
-    12,
-    21
-  ],
-  "sprig_oak": [
-    12,
-    21
-  ],
-  "sprig_hickory": [
-    12,
-    21
   ],
   "crate": [
     20,
@@ -263,33 +159,13 @@
     20,
     40
   ],
-  "edge_bush": [
-    48,
-    48
-  ],
-  "decor_grass": [
-    18,
-    16
-  ],
-  "decor_lichen": [
-    16,
-    12
-  ],
-  "decor_flower": [
-    12,
-    14
-  ],
-  "decor_frond": [
-    20,
-    12
-  ],
   "light_mote": [
     8,
     8
   ],
-  "green_anole": [
-    16,
-    8
+  "decor_tracks": [
+    24,
+    14
   ],
   "figure_tortoise": [
     12,
@@ -538,5 +414,225 @@
   "ui_moon": [
     64,
     64
+  ],
+  "oak": [
+    148,
+    142
+  ],
+  "hickory": [
+    132,
+    172
+  ],
+  "palmetto": [
+    92,
+    82
+  ],
+  "rosemary": [
+    84,
+    78
+  ],
+  "pepper": [
+    138,
+    144
+  ],
+  "airpotato": [
+    80,
+    102
+  ],
+  "cogon": [
+    50,
+    62
+  ],
+  "natal": [
+    52,
+    62
+  ],
+  "tortoise": [
+    120,
+    84
+  ],
+  "mouse": [
+    51,
+    42
+  ],
+  "jay": [
+    84,
+    75
+  ],
+  "indigo": [
+    204,
+    96
+  ],
+  "cat": [
+    102,
+    87
+  ],
+  "tegu": [
+    186,
+    78
+  ],
+  "iguana": [
+    207,
+    90
+  ],
+  "anole": [
+    69,
+    36
+  ],
+  "decor_grass": [
+    24,
+    26
+  ],
+  "decor_lichen": [
+    22,
+    18
+  ],
+  "decor_frond": [
+    28,
+    22
+  ],
+  "decor_flower": [
+    20,
+    25
+  ],
+  "edge_bush": [
+    76,
+    64
+  ],
+  "thicket": [
+    144,
+    136
+  ],
+  "vine_leaf": [
+    28,
+    32
+  ],
+  "vine_bulbil": [
+    15,
+    18
+  ],
+  "sprig_palmetto": [
+    18,
+    28
+  ],
+  "sprig_rosemary": [
+    18,
+    28
+  ],
+  "sprig_oak": [
+    18,
+    28
+  ],
+  "sprig_hickory": [
+    18,
+    28
+  ],
+  "burrow": [
+    76,
+    50
+  ],
+  "decor_deadwood": [
+    42,
+    23
+  ],
+  "decor_acorns": [
+    18,
+    15
+  ],
+  "green_anole": [
+    69,
+    36
+  ],
+  "decor_butterfly": [
+    30,
+    22
+  ],
+  "ground_sand": [
+    128,
+    128
+  ],
+  "ground_sand_1": [
+    128,
+    128
+  ],
+  "ground_sand_2": [
+    128,
+    128
+  ],
+  "ground_oak": [
+    128,
+    128
+  ],
+  "ground_oak_1": [
+    128,
+    128
+  ],
+  "ground_oak_2": [
+    128,
+    128
+  ],
+  "ground_rosemary": [
+    128,
+    128
+  ],
+  "ground_rosemary_1": [
+    128,
+    128
+  ],
+  "ground_rosemary_2": [
+    128,
+    128
+  ],
+  "ground_base": [
+    128,
+    128
+  ],
+  "ground_base_1": [
+    128,
+    128
+  ],
+  "ground_base_2": [
+    128,
+    128
+  ],
+  "litter_oak": [
+    140,
+    70
+  ],
+  "litter_sand": [
+    140,
+    70
+  ],
+  "litter_rosemary": [
+    140,
+    70
+  ],
+  "shade_oak": [
+    140,
+    48
+  ],
+  "shade_hickory": [
+    140,
+    48
+  ],
+  "shade_palmetto": [
+    140,
+    48
+  ],
+  "shade_rosemary": [
+    140,
+    48
+  ],
+  "shade_pepper": [
+    140,
+    48
+  ],
+  "shade_thicket": [
+    140,
+    48
+  ],
+  "vine_root": [
+    42,
+    32
   ]
 }

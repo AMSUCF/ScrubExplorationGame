@@ -1,10 +1,10 @@
 # Scrub Bot — Game Design
 
 ## Pitch
-A small, round robot drops by pod into a neglected patch of Florida scrub to be its new caretaker. With no words, only curiosity, the robot works out what doesn't belong, grows back what does, and turns its landed pod into a cozy home full of seedlings, sprigs and keepsakes. Meanwhile, the wildlife slowly comes back. The game is cozy, has no failure state, and is suitable for all ages.
+A small, round robot drops by pod into a neglected patch of Florida scrub to be its new caretaker. Through curiosity, expressive reactions, and short readable tool labels, the robot works out what doesn't belong, grows back what does, and turns its landed pod into a cozy home full of seedlings, sprigs and keepsakes. Meanwhile, the wildlife slowly comes back. The game is cozy, has no failure state, and is suitable for all ages.
 
 ## Pillars
-- **Wordless.** Everything is told through pictures, icons, animation and the robot's reactions, with one exception: the field guide is the robot's reference book and keeps short written facts.
+- **Show, then explain just enough.** Pictures, icons, animation and the robot's reactions carry the mood. Short text explains tools, costs, plant care and habitat needs; the field guide keeps written natural-history facts.
 - **Learning through doing.** The first time you meet anything, you scan it, and the field guide fills in.
 - **Ecology as mechanics.** Wildlife arrives, grows and dips according to real relationships: tortoises need open, unfenced sand; mice live in tortoise burrows; jays need low oaks and no cats; indigo snakes need burrows and no tegus.
 - **Gentle stewardship.** Invasive animals are crated and relocated, never harmed. Cats get adopted.
@@ -33,7 +33,7 @@ Wake in the cradle → tend hydroponics → head out → scan, clear, rescue, co
 | --- | --- |
 | Battery | Starts at 100. Actions cost 1–5 and driving drains slowly. At 0 the robot crawls. |
 | Scanning | The first interaction with any unscanned species is a Scan (🔍, 1 🔋). |
-| Invasive plants | Cogon (pull; **spreads nightly**, up to 4 new patches), Brazilian pepper (cut ×3, blocks movement), air potato (pull; its bulbils go in the bag), natal grass (pull). |
+| Invasive plants | Cogon (pull; **spreads nightly**, up to 4 new patches), Brazilian pepper (cut ×3 with visible work, blocks movement), air potato (safe snips → bag 3 bulbils → unwind; 4 energy at completion), natal grass (pull). |
 | Hazards | Tires and bottles go in the bag (6 slots). Fences (×2) block movement and keep tortoises out. Overgrown thickets (trim ×2) stand in for missing fire. |
 | Native plants | *Choked* while any invasive is within 2 tiles. Once freed, each gives seeds (🌰) and a sprig (💐) once per day. |
 | Hydroponics | Starts with 4 jars. Sow (pick the species) → top up water daily → 2 watered nights → pot up a seedling. |

@@ -37,6 +37,12 @@ export class Critter {
     this.target = null;
   }
 
+  greet(fromX: number): void {
+    this.target = null;
+    this.wait = 3800;
+    this.sprite.setFlipX(fromX < this.sprite.x).setAngle(0);
+  }
+
   update(dtMs: number): void {
     this.t += dtMs;
     if (this.wait > 0) {

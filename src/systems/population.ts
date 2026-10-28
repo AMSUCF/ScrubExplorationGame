@@ -20,6 +20,7 @@ export interface Need {
   met: boolean;
   /** Needed for the species to arrive at all (others only gate growth). */
   forArrival: boolean;
+  label: string;
 }
 
 function count(s: GameState, pred: Parameters<typeof countWhere>[1]) {
@@ -54,26 +55,26 @@ export function speciesNeeds(s: GameState, species: NativeAnimalId): Need[] {
   switch (species) {
     case 'tortoise':
       return [
-        { icon: 'fence', met: !has(s, 'fence', 'sand'), forArrival: true },
-        { icon: worstIn(s, 'sand'), met: zoneHealth(s, 'sand') >= 65, forArrival: true },
-        { icon: 'tegu', met: !has(s, 'tegu'), forArrival: false },
+        { icon: 'fence', met: !has(s, 'fence', 'sand'), forArrival: true, label: 'Clear the old fences in Sand Scrub' },
+        { icon: worstIn(s, 'sand'), met: zoneHealth(s, 'sand') >= 65, forArrival: true, label: `Sand Scrub: ${zoneHealth(s, 'sand')} / 65% restored` },
+        { icon: 'tegu', met: !has(s, 'tegu'), forArrival: false, label: 'Safely relocate the tegus' },
       ];
     case 'mouse':
       return [
-        { icon: 'burrow', met: tortoiseHere && burrowCount(s) >= 1, forArrival: true },
-        { icon: 'cat', met: !has(s, 'cat'), forArrival: false },
+        { icon: 'burrow', met: tortoiseHere && burrowCount(s) >= 1, forArrival: true, label: 'Welcome a tortoise and its first burrow' },
+        { icon: 'cat', met: !has(s, 'cat'), forArrival: false, label: 'Help the cats find safe indoor homes' },
       ];
     case 'indigo':
       return [
-        { icon: 'burrow', met: tortoiseHere && burrowCount(s) >= 2, forArrival: true },
-        { icon: 'tegu', met: !has(s, 'tegu'), forArrival: true },
+        { icon: 'burrow', met: tortoiseHere && burrowCount(s) >= 2, forArrival: true, label: `Tortoise burrows: ${burrowCount(s)} / 2` },
+        { icon: 'tegu', met: !has(s, 'tegu'), forArrival: true, label: 'Safely relocate the tegus' },
       ];
     case 'jay':
       return [
-        { icon: worstIn(s, 'oak'), met: zoneHealth(s, 'oak') >= 60, forArrival: true },
-        { icon: 'oak', met: healthyOaks(s, 'oak') >= JAY_OAKS, forArrival: true },
-        { icon: 'thicket', met: !has(s, 'thicket', 'oak'), forArrival: true },
-        { icon: 'cat', met: !has(s, 'cat'), forArrival: true },
+        { icon: worstIn(s, 'oak'), met: zoneHealth(s, 'oak') >= 60, forArrival: true, label: `Oak Scrub: ${zoneHealth(s, 'oak')} / 60% restored` },
+        { icon: 'oak', met: healthyOaks(s, 'oak') >= JAY_OAKS, forArrival: true, label: `Healthy scrub oaks: ${healthyOaks(s, 'oak')} / ${JAY_OAKS}` },
+        { icon: 'thicket', met: !has(s, 'thicket', 'oak'), forArrival: true, label: 'Open up the overgrown oak thickets' },
+        { icon: 'cat', met: !has(s, 'cat'), forArrival: true, label: 'Help the cats find safe indoor homes' },
       ];
   }
 }

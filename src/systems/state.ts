@@ -12,6 +12,7 @@ import {
   SpeciesId,
 } from '../data/species';
 import { Rng, mulberry32, pick, randInt } from './rng';
+import type { VineCareProgress } from './vineCare';
 
 export const STATE_VERSION = 2;
 
@@ -22,6 +23,8 @@ export interface InvasivePlantEntity {
   tx: number;
   ty: number;
   hp: number;
+  /** Optional in v2 saves; resumable careful vine work, initialized on first interaction. */
+  care?: VineCareProgress;
 }
 
 export interface NativePlantEntity {
@@ -157,6 +160,8 @@ export interface GameState {
     relocated: number;
   };
   won: boolean;
+  /** One small thank-you from each native species per day; additive to existing v2 saves. */
+  encounters?: string[];
 }
 
 export const NATIVE_PLANTS: NativePlantId[] = ['palmetto', 'rosemary', 'oak', 'hickory'];
@@ -326,6 +331,12 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
   placeInvasive(state, 'cogon', tut.tx, tut.ty + 1);
   addEntity<HazardEntity>(state, { kind: 'hazard', species: 'bottle', tx: tut.tx + 3, ty: tut.ty - 1, hp: 1 });
 
+  // A reachable rescue grove teaches canopy scale and the relationship between host and vine.
+  addEntity<NativePlantEntity>(state, { kind: 'nativePlant', species: 'oak', tx: 30, ty: 27, planted: false, plantedDay: 0, lastSeedDay: 0, rescued: false });
+  placeInvasive(state, 'airpotato', 31, 28);
+  addEntity<NativePlantEntity>(state, { kind: 'nativePlant', species: 'palmetto', tx: 33, ty: 28, planted: false, plantedDay: 0, lastSeedDay: 0, rescued: false });
+  placeInvasive(state, 'pepper', 34, 27);
+
   // An old fence line cutting through the sand scrub — tortoises won't come back until it's gone.
   for (let i = 0; i < 6; i++) {
     const tx = 15;
@@ -355,7 +366,7 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
         // Most natives start smothered by an invasive neighbour.
         if (rng() < 0.8) {
           const pool = Object.keys(recipe.invasives) as InvasivePlantId[];
-          chokeAround(state, rng, t.tx, t.ty, pick(rng, pool));
+          chokeAround(state, rng, t.tx, t.ty, (species === 'oak' || species === 'hickory') && pool.includes('airpotato') ? 'airpotato' : pick(rng, pool));
         }
       }
     }

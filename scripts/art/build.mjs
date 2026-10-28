@@ -2,8 +2,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import sharp from 'sharp';
-import { ground, hydro, prop, room, sprig } from './shapes.mjs';
+import { hydro, prop, room } from './shapes.mjs';
 import { ICON_ART, iconSvg } from './icons.mjs';
+import { buildNature } from './nature.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const out = path.join(root, 'public/art');
@@ -13,9 +14,9 @@ const catalog = {};
 const sourceIndex = {};
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
 
-async function emit(key, w, h, buffer, source) {
+async function emit(key, w, h, buffer, source, pngOptions = {}) {
   const dest = path.join(out, `${key}.png`);
-  await sharp(buffer).resize(w * 4, h * 4, { fit: 'contain', background: transparent }).png({ compressionLevel: 9 }).toFile(dest);
+  await sharp(buffer).resize(w * 4, h * 4, { fit: 'contain', background: transparent }).png({ compressionLevel: 9, ...pngOptions }).toFile(dest);
   catalog[key] = [w, h];
   sourceIndex[key] = source;
 }
@@ -77,32 +78,16 @@ async function sprite(key, w, h, item, source, fit = 'bottom') {
   await emit(key, w, h, canvas, source);
 }
 
-const species = [
-  ['palmetto', 34, 30], ['rosemary', 30, 28], ['oak', 38, 38], ['hickory', 36, 42],
-  ['cogon', 30, 30], ['pepper', 44, 44], ['airpotato', 34, 30], ['natal', 30, 30],
-  ['tortoise', 28, 20], ['mouse', 14, 11], ['jay', 19, 16], ['indigo', 41, 16],
-  ['cat', 23, 18], ['tegu', 30, 14], ['iguana', 34, 16], ['anole', 16, 8],
-];
-const plantsAndAnimals = await silhouettes('species.png', 16);
-for (let i = 0; i < species.length; i++) {
-  const [key, w, h] = species[i];
-  await sprite(key, w, h, plantsAndAnimals[i], 'source/species.png', i >= 8 ? 'center' : 'bottom');
-}
-const botanical = await silhouettes('botany.png', 2);
-await sprite('rosemary', 30, 28, botanical[0], 'source/botany.png');
-await sprite('hickory', 36, 42, botanical[1], 'source/botany.png');
-const snake = await silhouettes('indigo.png', 1);
-await sprite('indigo', 41, 16, snake[0], 'source/indigo.png', 'center');
-
 const homes = await silhouettes('home.png', 16);
 const home = [
   ['robot', 36, 36], ['robot_blink', 36, 36], ['robot_happy', 36, 36], ['antenna', 8, 16],
   ['pod0', 104, 74], ['pod1', 104, 74], ['pod2', 104, 74], ['pod_shut', 104, 74],
   ['cradle', 64, 34], ['monitor', 44, 34], ['bench', 64, 36], ['vase', 24, 30],
-  ['recycler', 36, 40], ['pad', 40, 32], ['thicket', 40, 36], ['burrow', 30, 20],
+  ['recycler', 36, 40], ['pad', 40, 32], ['thicket', 134, 124], ['burrow', 30, 20],
 ];
 for (let i = 0; i < home.length; i++) {
   const [key, w, h] = home[i];
+  if (key === 'thicket' || key === 'burrow') continue; // rebuilt with the nature paintings
   if (i >= 4 && i <= 7) {
     // All pod upgrades share the same body scale and baseline, so upgrading never jumps.
     const item = homes[i];
@@ -115,19 +100,19 @@ for (let i = 0; i < home.length; i++) {
   } else await sprite(key, w, h, homes[i], 'source/home.png', i < 3 || key === 'burrow' ? 'center' : 'bottom');
 }
 
-for (const zone of ['sand', 'oak', 'rosemary', 'base']) await emit(`ground_${zone}`, 128, 128, Buffer.from(ground(zone)), 'shapes.mjs');
 for (const [level, w, h] of [[0, 384, 256], [1, 480, 288], [2, 576, 320]]) await emit(`room${level}`, w, h, Buffer.from(room(level, w, h)), 'shapes.mjs');
 for (const stage of ['empty', 'sown', 'sprout', 'ready']) for (const water of ['dry', 'wet']) await emit(`hydro_${stage}_${water}`, 28, 36, Buffer.from(hydro(stage, water === 'wet')), 'shapes.mjs');
-for (const plant of ['palmetto', 'rosemary', 'oak', 'hickory']) await emit(`sprig_${plant}`, 12, 21, Buffer.from(sprig(plant)), 'shapes.mjs');
 for (const [key, w, h] of [
   ['crate', 20, 15], ['tire', 24, 18], ['bottle', 16, 18], ['fence', 32, 32], ['board', 46, 34],
   ['window', 52, 36], ['doormat', 48, 14], ['polaroid', 18, 21], ['postcard', 22, 16], ['pin', 6, 6],
-  ['sparkle', 10, 10], ['ring', 32, 32], ['bubble', 34, 32], ['dust', 10, 10], ['flame', 20, 40], ['edge_bush', 48, 48],
-  ['decor_grass', 18, 16], ['decor_lichen', 16, 12], ['decor_flower', 12, 14], ['decor_frond', 20, 12], ['light_mote', 8, 8],
-  ['green_anole', 16, 8], ['figure_tortoise', 12, 12], ['figure_mouse', 12, 12], ['figure_jay', 12, 12], ['figure_indigo', 12, 12],
+  ['sparkle', 10, 10], ['ring', 32, 32], ['bubble', 34, 32], ['dust', 10, 10], ['flame', 20, 40], ['light_mote', 8, 8], ['decor_tracks', 24, 14],
+  ['figure_tortoise', 12, 12], ['figure_mouse', 12, 12], ['figure_jay', 12, 12], ['figure_indigo', 12, 12],
 ]) await emit(key, w, h, Buffer.from(prop(key)), 'shapes.mjs');
 
 for (const key of Object.keys(ICON_ART)) await emit(`ui_${key}`, 64, 64, Buffer.from(iconSvg(key)), 'icons.mjs');
+
+// The retained botanical paintings supersede the first-pass silhouettes and vector nature props.
+await buildNature(emit, out);
 
 await writeFile(path.join(out, 'manifest.json'), `${JSON.stringify(Object.keys(catalog), null, 2)}\n`);
 await writeFile(path.join(root, 'src/art/catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`);
@@ -146,3 +131,27 @@ for (let i = 0; i < entries.length; i++) {
 }
 await mkdir(path.join(root, 'screenshots'), { recursive: true });
 await sharp({ create: { width: 1024, height: Math.ceil(entries.length / 8) * 128, channels: 3, background: '#f2e7cc' } }).composite(cells).png().toFile(path.join(root, 'screenshots/art-catalog.png'));
+
+// A uniform-thumbnail sheet conceals scale mistakes. This plate keeps every subject at the
+// same 2x gameplay scale, including the robot and pod as references beside the rebuilt foliage.
+const plate = [];
+const caption = (x, y, message, size = 18) => plate.push({ input: Buffer.from(`<svg width="1600" height="32"><text x="${x}" y="24" font-family="sans-serif" font-size="${size}" fill="#554d3d">${message}</text></svg>`), left: 0, top: y });
+caption(35, 15, 'BOTANICAL SCALE REVIEW — all subjects at twice their gameplay size', 24);
+caption(35, 65, 'Native plants · irregular crowns, visible branching, small foliage');
+caption(35, 510, 'Invasive plants · contrasting growth forms');
+caption(35, 920, 'Wildlife and burrow · natural body proportions, a shell-sized entrance and a broad sandy apron');
+for (const [keys, startX, baseline, animal] of [
+  [['oak', 'hickory', 'palmetto', 'rosemary', 'robot', 'pod0'], 35, 455, false],
+  [['cogon', 'natal', 'pepper', 'airpotato', 'thicket', 'robot'], 65, 850, false],
+  [['tortoise', 'burrow', 'mouse', 'jay', 'indigo', 'cat', 'tegu', 'iguana', 'anole'], 60, 1080, true],
+]) {
+  let x = startX;
+  for (const key of keys) {
+    const factor = animal && key !== 'burrow' ? 2 / 3 : key === 'pod0' ? 3 : 2;
+    const [w, h] = catalog[key].map(n => Math.round(n * factor));
+    plate.push({ input: await sharp(path.join(out, `${key}.png`)).resize(w, h).png().toBuffer(), left: x, top: baseline - h });
+    caption(x, baseline + 7, key, 16);
+    x += w + (animal ? 45 : 30);
+  }
+}
+await sharp({ create: { width: 1600, height: 1140, channels: 3, background: '#f5eddc' } }).composite(plate).png().toFile(path.join(root, 'screenshots/nature-scale.png'));

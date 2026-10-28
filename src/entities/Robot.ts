@@ -129,7 +129,11 @@ export class Robot {
       const dx = next.x - this.body.x;
       const dy = next.y - (this.body.y + 8);
       const d = Math.hypot(dx, dy);
-      if (d < 5) {
+      // A slower frame can step over a tiny fixed arrival radius and oscillate forever.
+      // Land on the waypoint when this frame's movement would reach it.
+      if (d <= Math.max(5, speed * Math.min(dtMs, 100) / 1000 + 1)) {
+        this.body.setPosition(next.x, next.y - 8);
+        this.body.setVelocity(0, 0);
         this.path.shift();
         if (this.path.length === 0) this.arrive();
       } else {

@@ -34,6 +34,30 @@ for (const key of manifest) {
     assert(meta.hasAlpha, `${key}: missing transparency`);
     assert(!isOpaque, `${key}: background must be transparent`);
   }
+  if (key.startsWith('ground_')) {
+    const { data, info } = await pic.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let y = 0; y < info.height; y++) for (let k = 0; k < 4; k++) {
+      assert.equal(data[(y * info.width) * 4 + k], data[(y * info.width + info.width - 1) * 4 + k], `${key}: horizontal tile seam`);
+    }
+    for (let x = 0; x < info.width; x++) for (let k = 0; k < 4; k++) {
+      assert.equal(data[x * 4 + k], data[((info.height - 1) * info.width + x) * 4 + k], `${key}: vertical tile seam`);
+    }
+  }
+}
+
+// Rotating a multi-material source sheet before cropping can put another habitat into a
+// variant. Each set should keep its own overall material, in addition to matching tile edges.
+for (const zone of ['sand', 'oak', 'rosemary', 'base']) {
+  const means = [];
+  for (const suffix of ['', '_1', '_2']) means.push((await sharp(path.join(dir, `ground_${zone}${suffix}.png`)).stats()).channels.slice(0, 3).map(c => c.mean));
+  for (let channel = 0; channel < 3; channel++) {
+    const values = means.map(v => v[channel]);
+    assert(Math.max(...values) - Math.min(...values) < 8, `${zone}: variants contain different ground materials`);
+  }
+}
+for (const key of ['vine_leaf', 'vine_bulbil', 'vine_root', 'litter_oak', 'litter_sand', 'litter_rosemary',
+  ...['oak', 'hickory', 'palmetto', 'rosemary', 'pepper', 'thicket'].map(k => `shade_${k}`)]) {
+  assert(manifest.includes(key), `Missing habitat layer: ${key}`);
 }
 
 for (const font of ['nunito', 'fraunces']) {
@@ -42,4 +66,4 @@ for (const font of ['nunito', 'fraunces']) {
 }
 const splash = await sharp(path.join(dir, 'splash.webp')).metadata();
 assert(splash.width >= 1440 && splash.width > splash.height, 'Splash must be a large landscape illustration');
-console.log(`ART OK — ${manifest.length} assets, ${required.length} required brief keys, 4× dimensions, transparent sprites, opaque surfaces, fonts and splash verified.`);
+console.log(`ART OK — ${manifest.length} assets, ${required.length} required brief keys, 4× dimensions, transparent sprites, seamless ground edges, opaque surfaces, fonts and splash verified.`);

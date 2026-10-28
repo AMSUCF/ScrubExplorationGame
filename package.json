@@ -14,7 +14,8 @@
     "audio": "node scripts/audio-check.mjs",
     "art:build": "node scripts/art/build.mjs",
     "art:check": "node scripts/art/check.mjs",
-    "art:smoke": "node scripts/art-smoke.mjs"
+    "art:smoke": "node scripts/art-smoke.mjs",
+    "restoration:smoke": "node scripts/restoration-smoke.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"

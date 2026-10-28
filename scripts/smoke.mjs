@@ -62,7 +62,7 @@ try {
   await page.getByRole('button', { name: 'Close' }).click();
   await menuButton('Pull').waitFor();
   await menuButton('Pull').dispatchEvent('pointerdown');
-  await page.waitForTimeout(500);
+  await page.waitForFunction(id => !window.__game.scene.getScene('World').state.entities.some(e => e.id === id), cogon.id);
   const gone = await scene('World', 'return !w.state.entities.some(e => e.id === a)', cogon.id);
   if (!gone) fail('cogon not removed via radial menu');
   await page.screenshot({ path: 'screenshots/5-after-pull.png' });
