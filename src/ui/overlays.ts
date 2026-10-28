@@ -6,6 +6,7 @@ import { NightSummary } from '../systems/dayCycle';
 import { zoneHealth } from '../systems/habitat';
 import { NATIVE_ANIMALS, speciesNeeds, trend } from '../systems/population';
 import { GameState, Postcard } from '../systems/state';
+import { audio } from '../audio';
 import { services } from '../services';
 import { setInputEnabled } from './input';
 
@@ -19,6 +20,9 @@ function overlay(className: string, html: string): { root: HTMLElement; close: (
   root.className = `overlay ${className}`;
   root.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`;
   document.body.appendChild(root);
+  root.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('button')) audio.sfx('click');
+  });
   openCount++;
   setInputEnabled(false);
   let closed = false;
@@ -92,6 +96,7 @@ export function showTitle(hasSave: boolean): Promise<'continue' | 'new'> {
 
 export function showDiscovery(id: SpeciesId): Promise<void> {
   const g = GUIDE_BY_ID[id];
+  audio.sfx('discovery', { delay: 0.2 });
   return new Promise((resolve) => {
     const { root, close } = overlay(
       'discovery',
@@ -116,6 +121,7 @@ export function showDiscovery(id: SpeciesId): Promise<void> {
 const CATEGORY_ORDER: Category[] = ['nativeAnimal', 'nativePlant', 'invasivePlant', 'invasiveAnimal', 'hazard'];
 
 export function showFieldGuide(state: GameState, openId?: SpeciesId): Promise<void> {
+  audio.sfx('page');
   return new Promise((resolve) => {
     const found = GUIDE.filter((g) => state.scanned.includes(g.id)).length;
     const sections = CATEGORY_ORDER.map((cat) => {
@@ -331,6 +337,8 @@ export function showMenu(state: GameState): Promise<'resume' | 'new'> {
        </div>
        <div class="row">
          <button class="primary big-icon" data-act="resume" aria-label="Resume">▶</button>
+         <button class="big-icon toggle${audio.musicOn ? '' : ' muted'}" data-act="music" aria-label="Music" aria-pressed="${audio.musicOn}">🎵</button>
+         <button class="big-icon toggle${audio.sfxOn ? '' : ' muted'}" data-act="sfx" aria-label="Sound effects" aria-pressed="${audio.sfxOn}">🔔</button>
          ${document.fullscreenEnabled ? '<button class="big-icon" data-act="full" aria-label="Fullscreen">⛶</button>' : ''}
          <button class="big-icon" data-act="new" aria-label="New game">✦</button>
        </div>`,
@@ -338,6 +346,14 @@ export function showMenu(state: GameState): Promise<'resume' | 'new'> {
     root.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       const act = btn?.dataset.act;
+      if (act === 'music' || act === 'sfx') {
+        if (act === 'music') audio.toggleMusic();
+        else audio.toggleSfx();
+        const on = act === 'music' ? audio.musicOn : audio.sfxOn;
+        btn!.classList.toggle('muted', !on);
+        btn!.setAttribute('aria-pressed', String(on));
+        return;
+      }
       if (act === 'full') {
         if (document.fullscreenElement) void document.exitFullscreen();
         else void document.documentElement.requestFullscreen?.().catch(() => undefined);

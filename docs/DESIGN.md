@@ -79,6 +79,26 @@ A wordless intro (skippable with ⏭):
 4. The camera glances at a smothered plant 🥀 nearby.
 5. The robot perks up ❗💗, and morning begins.
 
+## Sound
+- **Fully synthesized** (Web Audio, `src/audio/`).
+  - Audio starts on the first tap (a browser requirement) and pauses when the tab is hidden.
+  - The game remembers the player's music and effects settings.
+- **Music:** generative.
+  - Each theme is a chord loop with an improvised pentatonic melody that breathes every fourth bar.
+  - `scrub`: D major, guitar-like plucks, a soft shaker, little bird-like grace notes.
+  - `home`: F major, music box.
+  - `intro`: spacious and hopeful.
+  - Themes crossfade between scenes, and the music rests at night with a lullaby.
+- **Ambience:**
+  - Outdoors: cicada swells (fading as the battery runs down), crickets (rising at dusk), wind, and occasional cardinals, mourning doves, eastern towhees and woodpeckers.
+  - Indoors: muffled, with bubbling jars.
+- **Voices:**
+  - The robot bleeps by mood: happy, love, sad, surprise, proud, question, curious, yawn, wake.
+  - Each animal has a stylized call. Calls are panned and attenuated by distance, and play on sightings, thought bubbles, scans, greetings and captures.
+  - Invasive critters occasionally make themselves heard from the brush.
+- **Effects:** every action has its own sound, as do rescues, gains, photos, discoveries, the morning card, upgrades and room expansions. The robot's motor hum follows its speed.
+- `npm run audio` renders everything offline in a real browser to check levels and write WAV previews.
+
 ## Tech
 - Phaser 3 and TypeScript, built with Vite.
 - Game logic is pure TS in `src/systems` and unit-tested, including a scripted full playthrough.

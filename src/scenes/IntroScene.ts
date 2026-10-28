@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { ART_SCALE } from '../art/placeholders';
 import { TILE, WORLD_H, WORLD_W } from '../config';
 import { BASE_CENTER, POD, tileCenter } from '../data/map';
+import { audio } from '../audio';
 import { Robot } from '../entities/Robot';
 import { services } from '../services';
 import { GameState, isAnimal } from '../systems/state';
@@ -28,6 +29,9 @@ export class IntroScene extends Phaser.Scene {
 
   create(): void {
     services.hud?.setVisible(false);
+    audio.music('intro');
+    audio.ambient('day');
+    audio.sfx('whoosh', { vol: 0.9 });
     this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-10);
     for (const e of this.state.entities) {
       if (isAnimal(e)) {
@@ -77,6 +81,7 @@ export class IntroScene extends Phaser.Scene {
 
   private landed(pod: Phaser.GameObjects.Image, flame: Phaser.GameObjects.Image, x: number, y: number): void {
     flame.destroy();
+    audio.sfx('land');
     this.cameras.main.shake(380, 0.012);
     const dust = this.add.particles(x, y - 4, 'dust', {
       speed: { min: 40, max: 140 },
@@ -92,6 +97,8 @@ export class IntroScene extends Phaser.Scene {
     // Door pops open; the robot peeks out.
     this.time.delayedCall(900, () => {
       pod.setTexture('pod0');
+      audio.sfx('pop');
+      audio.robot('wake', { delay: 0.3 });
       const robot = new Robot(this, x, y - 22);
       this.robot = robot;
       robot.body.setAlpha(0).setScale(S * 0.6);

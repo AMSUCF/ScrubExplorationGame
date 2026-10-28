@@ -1,6 +1,8 @@
 // The player robot: path following, springy antennas, blinking, and wordless emotes.
 import Phaser from 'phaser';
 import { ART_SCALE } from '../art/placeholders';
+import { audio } from '../audio';
+import { RobotMood } from '../audio/voices';
 import { Mood } from '../systems/actions';
 
 const S = 1 / ART_SCALE;
@@ -11,6 +13,18 @@ const MOOD_ICON: Record<Mood, string> = {
   sad: '💧',
   surprise: '❗',
   proud: '⭐',
+};
+
+const EMOTE_VOICE: Record<string, RobotMood> = {
+  happy: 'happy',
+  love: 'love',
+  sad: 'sad',
+  surprise: 'surprise',
+  proud: 'proud',
+  '❓': 'question',
+  '❗': 'surprise',
+  '📸': 'curious',
+  '🪫': 'sad',
 };
 
 export class Robot {
@@ -172,6 +186,9 @@ export class Robot {
       this.body.setTexture('robot_happy');
     }
     floatIcon(this.scene, this.body.x + 10, this.body.y - 30, icon);
+    const voice = EMOTE_VOICE[mood];
+    // Everyday "happy" chirps are sprinkled in so repeated chores don't get noisy.
+    if (voice && (voice !== 'happy' || Math.random() < 0.35)) audio.robot(voice, { delay: 0.05 });
     if (mood === 'sad') this.scene.tweens.add({ targets: this.antennas, angle: '+=25', duration: 120, yoyo: true });
   }
 }

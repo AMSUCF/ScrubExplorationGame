@@ -6,6 +6,7 @@ import { ART_SCALE } from '../art/placeholders';
 import { REACH, ROBOT_SPEED } from '../config';
 import { HOME_TILE, HomeItem, ROOM_SIZES, WALL_ROWS } from '../data/home';
 import { ROBOT_SPAWN } from '../data/map';
+import { audio } from '../audio';
 import { Robot, floatIcon } from '../entities/Robot';
 import { ActionResult } from '../systems/actions';
 import { nightTick } from '../systems/dayCycle';
@@ -77,6 +78,8 @@ export class HomeScene extends PlayScene {
     cam.fadeIn(300, 255, 248, 235);
 
     this.setupPlay();
+    audio.music('home');
+    audio.ambient('home');
     this.saveNow();
   }
 
@@ -263,6 +266,9 @@ export class HomeScene extends PlayScene {
     const cradle = currentLayout(this.state).find((i) => i.kind === 'cradle')!;
     this.robot.setPosition(cradle.x * T, (cradle.y - 0.6) * T);
     for (let i = 0; i < 3; i++) this.time.delayedCall(i * 260, () => floatIcon(this, this.robot.x + 6, this.robot.y - 20, '💤'));
+    audio.robot('yawn');
+    audio.sfx('lullaby', { delay: 0.4 });
+    audio.music(null);
     const cam = this.cameras.main;
     await new Promise<void>((resolve) => {
       this.time.delayedCall(700, () => {
@@ -274,7 +280,10 @@ export class HomeScene extends PlayScene {
     this.robot.setPosition(cradle.x * T, (cradle.y + 0.7) * T);
     this.buildFurniture();
     this.saveNow();
+    audio.sfx('morning');
     await showMorning(summary, this.state);
+    audio.music('home');
+    audio.robot('wake');
     cam.fadeIn(600, 255, 236, 200);
     this.robot.emote('happy');
     this.busy = false;

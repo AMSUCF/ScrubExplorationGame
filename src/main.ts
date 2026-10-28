@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
+import { audio } from './audio';
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';
 import { IntroScene } from './scenes/IntroScene';
@@ -52,11 +53,14 @@ const resize = () => {
 window.addEventListener('resize', resize);
 window.visualViewport?.addEventListener('resize', resize);
 
+// Browsers only allow sound after a gesture: start (or resume) audio on any tap or key.
+for (const ev of ['pointerdown', 'keydown', 'touchend'] as const) window.addEventListener(ev, () => audio.unlock(), { capture: true });
+
 // Stop iOS double-tap zoom and pinch gestures from hijacking play.
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
 // `?debug` exposes the game for automated smoke tests and console poking.
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as unknown as { __game: Phaser.Game }).__game = game;
+  Object.assign(window, { __game: game, __audio: audio });
 }

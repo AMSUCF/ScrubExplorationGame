@@ -1,4 +1,5 @@
 // Wordless heads-up display: battery, day, zone health, and an icon inventory.
+import { audio } from '../audio';
 import { BAG_CAPACITY, JAR_CAPACITY } from '../config';
 import { ICON } from '../data/icons';
 import { ZONE_NAME, ZoneId } from '../data/map';
@@ -59,6 +60,19 @@ export class Hud {
     guide.setAttribute('aria-label', 'Field guide');
     this.guideBadge = el('span', 'badge', guide);
     guide.addEventListener('click', cb.onGuide);
+    const sound = el('button', 'icon-btn', buttons);
+    sound.setAttribute('aria-label', 'Sound');
+    const paintSound = () => {
+      const on = audio.musicOn || audio.sfxOn;
+      sound.innerHTML = `<span aria-hidden="true">${on ? '🔊' : '🔇'}</span>`;
+      sound.setAttribute('aria-pressed', String(on));
+    };
+    paintSound();
+    audio.onChange(paintSound);
+    sound.addEventListener('click', () => {
+      audio.unlock();
+      audio.toggleAll();
+    });
     const menu = el('button', 'icon-btn', buttons);
     menu.innerHTML = '<span aria-hidden="true">☰</span>';
     menu.title = 'Menu';

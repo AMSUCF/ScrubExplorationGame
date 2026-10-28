@@ -1122,3 +1122,8 @@ button.chip {
 .polaroid span {
   font-size: 12px;
 }
+
+.overlay button.toggle.muted {
+  opacity: 0.45;
+  text-decoration: line-through;
+}

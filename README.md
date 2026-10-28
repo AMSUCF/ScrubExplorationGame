@@ -35,6 +35,17 @@ Your progress saves automatically in the browser.
 
 8. **End the day** by sleeping in the **charging cradle**. A picture-only morning card shows what happened overnight.
 
+### Sound
+All audio is synthesized live with the Web Audio API, so there are no sound files.
+
+- **Music:** a generative, Florida-afternoon soundtrack. Outdoors it's warm pentatonic guitar-like plucks over seventh chords; inside the pod it's a slower music-box theme; the intro has its own hopeful theme.
+- **Ambience:** swelling cicadas, crickets that rise at dusk, wind, and passing cardinals, mourning doves, towhees and woodpeckers. Inside the pod it's muffled, with bubbling hydroponic jars.
+- **Robot:** wordless bleeps for each mood.
+- **Animals:** a call for every animal (the scrub-jay's raspy *shreep*, a meow, tegu hiss, mouse squeaks…), played on sightings, scans, thought bubbles and captures.
+- **Actions:** each one has its own sound.
+
+Use 🔊 in the HUD to mute everything, or ⏸ → 🎵 / 🔔 to toggle music and effects separately.
+
 ## Develop
 
 ```bash
@@ -43,6 +54,7 @@ npm run dev        # http://localhost:5173 (also exposed on your LAN for phone t
 npm test           # unit + full-playthrough tests for the game systems
 npm run build      # typecheck + production build into dist/
 npm run smoke      # after build: Playwright drives the game in a phone viewport, screenshots → screenshots/
+npm run audio      # renders every sound offline, checks none is silent or clipping, writes WAV previews
 ```
 
 Add `?debug` to the URL to expose `window.__game` for poking around in the console.
@@ -65,4 +77,7 @@ One-time setup: go to **Settings → Pages → Source** and choose **GitHub Acti
 | `src/scenes/` | Phaser scenes: `Boot`, `Intro` (the pod drop), `World` (the scrub), and `Home` (the pod interior). Both play scenes extend `PlayScene` (tap-to-go, radial menus, and feedback). |
 | `src/entities/` | The robot (path following, antennas, emotes) and critter wander AI. |
 | `src/ui/` | DOM HUD, radial action menu, keyboard input, and modal cards (guide, morning, monitor, corkboard, pause). |
+| `src/audio/` | Web Audio synth, sound effects, robot and animal voices, the generative music and the ambience. |
+| `public/art/` | Drop-in folder for finished illustrations (listed in `manifest.json`); each replaces the placeholder with the same key. |
 | `docs/DESIGN.md` | The game design doc. |
+| `docs/ART_ASSET_BRIEF.md` | The illustration brief: style guide, every asset with sizes and anchors, and the field marks for each species. |

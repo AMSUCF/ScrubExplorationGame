@@ -13,6 +13,12 @@ export const ART_SCALE = 2;
 
 export type Ctx = CanvasRenderingContext2D;
 
+/** A finished illustration delivered for this key (see public/art/ and docs/ART_ASSET_BRIEF.md). */
+export function artImage(scene: Phaser.Scene, key: string): CanvasImageSource | null {
+  const k = `art:${key}`;
+  return scene.textures.exists(k) ? (scene.textures.get(k).getSourceImage() as CanvasImageSource) : null;
+}
+
 export function make(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void) {
   if (scene.textures.exists(key)) scene.textures.remove(key);
   const tex = scene.textures.createCanvas(key, w * ART_SCALE, h * ART_SCALE);
@@ -22,7 +28,10 @@ export function make(scene: Phaser.Scene, key: string, w: number, h: number, dra
   c.scale(ART_SCALE, ART_SCALE);
   c.lineJoin = 'round';
   c.lineCap = 'round';
-  draw(c);
+  // Real art wins over the placeholder; it's scaled into the same logical box so nothing else changes.
+  const art = artImage(scene, key);
+  if (art) c.drawImage(art, 0, 0, w, h);
+  else draw(c);
   c.restore();
   tex.refresh();
 }
@@ -403,13 +412,17 @@ const ZONE_GROUND: Record<ZoneId, [string, string]> = {
   rosemary: [PAL.bald, PAL.baldShade],
 };
 
-function drawGround(c: Ctx) {
+/** Logical size of one seamless ground tile from the illustrator. */
+export const GROUND_TILE = 128;
+
+function drawGround(c: Ctx, tiles: Partial<Record<ZoneId, CanvasPattern>>) {
   c.fillStyle = PAL.sand;
   c.fillRect(0, 0, WORLD_W, WORLD_H);
   // Overlapping blobs per tile give soft, organic zone borders instead of a grid.
   for (let ty = 0; ty < MAP_H; ty++) {
     for (let tx = 0; tx < MAP_W; tx++) {
-      c.fillStyle = ZONE_GROUND[zoneAt(tx, ty)][0];
+      const zone = zoneAt(tx, ty);
+      c.fillStyle = tiles[zone] ?? ZONE_GROUND[zone][0];
       c.beginPath();
       c.arc(tx * TILE + 16 + (hash2(tx, ty, 4) - 0.5) * 8, ty * TILE + 16 + (hash2(tx, ty, 5) - 0.5) * 8, 23, 0, Math.PI * 2);
       c.fill();
@@ -431,6 +444,7 @@ function drawGround(c: Ctx) {
   for (let ty = 0; ty < MAP_H; ty++) {
     for (let tx = 0; tx < MAP_W; tx++) {
       const zone = zoneAt(tx, ty);
+      if (tiles[zone]) continue; // painted tiles carry their own detail
       const n = hash2(tx, ty, 11);
       const x = tx * TILE + hash2(tx, ty, 12) * TILE;
       const y = ty * TILE + hash2(tx, ty, 13) * TILE;
@@ -510,7 +524,18 @@ export function generateTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('ground')) scene.textures.remove('ground');
   const ground = scene.textures.createCanvas('ground', WORLD_W, WORLD_H);
   if (ground) {
-    drawGround(ground.getContext());
+    const ctx = ground.getContext();
+    const tiles: Partial<Record<ZoneId, CanvasPattern>> = {};
+    for (const zone of ['base', 'sand', 'oak', 'rosemary'] as ZoneId[]) {
+      const img = artImage(scene, `ground_${zone}`);
+      const pattern = img && ctx.createPattern(img, 'repeat');
+      if (pattern) {
+        const iw = (img as HTMLImageElement).width || GROUND_TILE;
+        pattern.setTransform(new DOMMatrix().scale(GROUND_TILE / iw));
+        tiles[zone] = pattern;
+      }
+    }
+    drawGround(ctx, tiles);
     ground.refresh();
   }
 }

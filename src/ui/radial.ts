@@ -1,4 +1,5 @@
 // Radial action menu: a ring of icon buttons that floats over whatever was tapped.
+import { audio } from '../audio';
 import { ICON } from '../data/icons';
 import { Action } from '../systems/actions';
 import { services } from '../services';
@@ -86,6 +87,7 @@ export class RadialMenu {
     const a = this.actions[i];
     if (!a) return;
     if (!a.enabled) {
+      audio.sfx('nope');
       const btn = this.root.querySelector<HTMLElement>(`[data-i="${i}"]`);
       btn?.classList.remove('shake');
       void btn?.offsetWidth;

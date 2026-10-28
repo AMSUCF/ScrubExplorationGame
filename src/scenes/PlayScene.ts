@@ -3,6 +3,8 @@
 import Phaser from 'phaser';
 import { BATTERY_DRIVE_DRAIN, REACH, TILE } from '../config';
 import { ZoneId } from '../data/map';
+import { audio } from '../audio';
+import { playActionSound } from '../audio/actions';
 import { Robot, floatIcon } from '../entities/Robot';
 import { services } from '../services';
 import { Action, ActionResult, Target, getActions, performAction } from '../systems/actions';
@@ -121,6 +123,7 @@ export abstract class PlayScene extends Phaser.Scene {
     this.closeMenu();
     this.down = { x: p.x, y: p.y, steering: false };
     this.walkToPoint(p.worldX, p.worldY);
+    audio.sfx('tap', { vol: 0.6 });
     this.tapMarker(p.worldX, p.worldY);
   }
 
@@ -231,6 +234,7 @@ export abstract class PlayScene extends Phaser.Scene {
     }
     this.menuTarget = it;
     this.menu.show(actions, (a) => this.choose(a));
+    audio.sfx('open');
     this.positionMenu();
   }
 
@@ -302,7 +306,9 @@ export abstract class PlayScene extends Phaser.Scene {
       this.goHome();
       return;
     }
+    const hpBefore = it.target.type === 'entity' && 'hp' in it.target.entity ? it.target.entity.hp : 0;
     const res = performAction(this.state, fresh);
+    playActionSound(fresh, res, hpBefore);
     this.feedback(res);
     if (!res.ok) return;
     if (this.handleTransition(res)) {
@@ -339,7 +345,10 @@ export abstract class PlayScene extends Phaser.Scene {
     if (res.mood) this.robot.emote(res.mood);
     const at = res.at ?? { x: this.robot.x, y: this.robot.y - 10 };
     res.gains.forEach((g, i) => {
-      this.time.delayedCall(i * 180, () => floatIcon(this, at.x - 6, at.y - 16, `+${g.n}${g.icon}`, g.tex));
+      this.time.delayedCall(i * 180, () => {
+        floatIcon(this, at.x - 6, at.y - 16, `+${g.n}${g.icon}`, g.tex);
+        audio.sfx('gain', { vol: 0.7 });
+      });
     });
     switch (res.fx) {
       case 'hit':
@@ -361,6 +370,7 @@ export abstract class PlayScene extends Phaser.Scene {
       case 'none':
         break;
     }
+    if (res.rescued.length) audio.sfx('rescue', { delay: 0.25 });
     for (const r of res.rescued) {
       const c = { x: r.tx * TILE + 16, y: r.ty * TILE + 10 };
       this.time.delayedCall(250, () => {
@@ -411,6 +421,7 @@ export abstract class PlayScene extends Phaser.Scene {
     const dt = Math.min(delta, 50);
     const keys = this.busy ? { x: 0, y: 0 } : keyVector();
     const mag = this.robot.update(dt, keys, this.robotSpeed(), !!this.state.crate);
+    audio.motor(mag);
     if (mag > 0.05) drain(this.state, (BATTERY_DRIVE_DRAIN * mag * dt) / 1000);
 
     if (this.menu.open) {

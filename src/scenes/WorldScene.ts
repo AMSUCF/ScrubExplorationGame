@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ART_SCALE } from '../art/placeholders';
 import { MAP_H, MAP_W, REACH, ROBOT_SPEED, ROBOT_SPEED_CARRYING, ROBOT_SPEED_EMPTY, TILE, WORLD_H, WORLD_W } from '../config';
+import { audio } from '../audio';
 import { Critter } from '../entities/Critter';
 import { Robot, floatIcon } from '../entities/Robot';
 import { BASE_CENTER, POD, STATIONS, Station, isStationTile, stationTiles, tileCenter, zoneAtPx } from '../data/map';
@@ -33,6 +34,7 @@ export class WorldScene extends PlayScene {
   private dusk!: Phaser.GameObjects.Rectangle;
   private pointer: Phaser.GameObjects.Text | null = null;
   private warnedEmpty = false;
+  private duskHeard = -1;
 
   constructor() {
     super('World');
@@ -82,6 +84,8 @@ export class WorldScene extends PlayScene {
     cam.fadeIn(350, 255, 248, 235);
 
     this.setupPlay();
+    audio.music('scrub');
+    audio.ambient('day');
     if (this.state.day === 1 && this.state.stats.invasivesRemoved === 0) this.showPointer();
     this.saveNow();
   }
@@ -273,14 +277,27 @@ export class WorldScene extends PlayScene {
     const now = this.time.now;
     for (const [id, view] of this.views) {
       const e = this.state.entities.find((x) => x.id === id);
-      if (!e || e.kind !== 'nativeAnimal') continue;
-      const d = Math.hypot(view.sprite.x - this.robot.x, view.sprite.y - this.robot.y);
+      if (!e || (e.kind !== 'nativeAnimal' && e.kind !== 'invasiveAnimal')) continue;
+      const dx = view.sprite.x - this.robot.x;
+      const d = Math.hypot(dx, view.sprite.y - this.robot.y);
+      // Calls are louder up close and panned toward the animal.
+      const near = { vol: Phaser.Math.Clamp(1 - d / BUBBLE_RANGE, 0.15, 1), pan: Phaser.Math.Clamp(dx / 200, -0.8, 0.8) };
+      if (e.kind === 'invasiveAnimal') {
+        // Invasive critters make themselves heard now and then (a meow from the brush…).
+        if (now > (view.nextBubble ?? 0) && d < BUBBLE_RANGE) {
+          audio.animal(e.species, { ...near, vol: near.vol * 0.6 });
+          view.nextBubble = now + 7000 + Math.random() * 9000;
+        }
+        continue;
+      }
       if (d < SIGHT_RANGE) {
         const seen = recordSighting(this.state, e.species);
         if (seen.counted) {
           floatIcon(this, view.sprite.x - 8, view.sprite.y - 22, '👁️');
+          audio.animal(e.species, near);
           if (seen.firstEver) {
             this.cameras.main.flash(220, 255, 255, 255);
+            audio.sfx('photo', { delay: 0.3 });
             this.robot.emote('📸');
           }
           this.saveSoon();
@@ -289,6 +306,7 @@ export class WorldScene extends PlayScene {
       if (view.bubble) view.bubble.setPosition(view.sprite.x + 10, view.sprite.y - 26);
       else if (now > (view.nextBubble ?? 0) && d < BUBBLE_RANGE) {
         this.showBubble(view, e.species);
+        audio.animal(e.species, { ...near, vol: near.vol * 0.7 });
         view.nextBubble = now + 5500 + Math.random() * 4000;
       }
     }
@@ -324,9 +342,14 @@ export class WorldScene extends PlayScene {
     if (this.state.battery <= 0 && !this.warnedEmpty) {
       this.warnedEmpty = true;
       this.robot.emote('🪫');
+      audio.sfx('powerDown');
     }
     const frac = batteryFraction(this.state);
     const dusk = Phaser.Math.Clamp((0.5 - frac) / 0.5, 0, 1);
     this.dusk.setFillStyle(dusk > 0.6 ? 0x6a4a8a : 0xff9a3c, dusk * 0.26);
+    if (Math.abs(dusk - this.duskHeard) > 0.03) {
+      this.duskHeard = dusk;
+      audio.dusk(dusk);
+    }
   }
 }

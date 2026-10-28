@@ -47,6 +47,7 @@ try {
   await page.waitForFunction(() => window.__game?.scene.isActive('World'), null, { timeout: 20000 });
   await page.waitForTimeout(900);
   await page.screenshot({ path: 'screenshots/2-world.png' });
+  if (!(await page.evaluate(() => window.__audio?.ready))) fail('audio engine is not running after the first tap');
 
   // Tap the tutorial cogon: a radial menu opens; choosing Scan walks over and scans it.
   const cogon = await scene('World', `

@@ -16,6 +16,16 @@ export class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
+  /** Queue any finished illustrations listed in public/art/manifest.json (missing files are fine). */
+  preload(): void {
+    this.load.json('art-manifest', 'art/manifest.json');
+    this.load.on('filecomplete-json-art-manifest', (_key: string, _type: string, keys: unknown) => {
+      if (!Array.isArray(keys)) return;
+      for (const k of keys) if (typeof k === 'string') this.load.image(`art:${k}`, `art/${k}.png`);
+    });
+    this.load.on('loaderror', (file: Phaser.Loader.File) => console.warn(`Art not loaded: ${file.key}`));
+  }
+
   async create(): Promise<void> {
     generateTextures(this);
     const cache = new Map<string, string>();
