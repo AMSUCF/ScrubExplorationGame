@@ -154,7 +154,9 @@ try {
   await shot('13-goals');
   await page.locator('button.chip.today').click();
   await world(`w.goHome();`);
-  await page.waitForFunction(() => window.__game.scene.isActive('Home'), null, { timeout: 15000 });
+  // Walking uses game time; software-rendered browser frames can take much longer
+  // than the short UI actions above. Still require the real trip and scene change.
+  await page.waitForFunction(() => window.__game.scene.isActive('Home'), null, { timeout: 60000 });
   await page.waitForTimeout(500);
   await page.evaluate(() => {
     const h = window.__game.scene.getScene('Home');
@@ -200,16 +202,19 @@ try {
   await action('Go outside').click();
   await page.waitForFunction(() => window.__game.scene.isActive('World'));
   await page.waitForTimeout(500);
-  await world(`
-    w.state.burned = w.state.burned.map(() => w.state.day - 30);
-    w.robot.setPosition(20 * 32, 24 * 32);
-    const t = { tx: 22, ty: 22 };
-    w.state.entities.push({ id: w.state.nextId++, kind: 'invasivePlant', species: 'cogon', tx: t.tx, ty: t.ty, hp: 1 });
-    sys.ignite(w.state, t.tx, t.ty);
-    w.refreshViews();`);
   for (const [name, width, height] of [['small-phone', 320, 568], ['landscape', 844, 390]]) {
     await page.setViewportSize({ width, height });
     await page.waitForTimeout(250);
+    // Each viewport needs a live target: the previous fire can burn out while
+    // its screenshots are being captured. Keep actual pointer interaction.
+    await world(`
+      w.state.fires = []; w.fireClock = 0;
+      w.state.burned = w.state.burned.map(() => w.state.day - 30);
+      w.robot.setPosition(20 * 32, 24 * 32);
+      const t = { tx: 22, ty: 22 };
+      w.state.entities.push({ id: w.state.nextId++, kind: 'invasivePlant', species: 'cogon', tx: t.tx, ty: t.ty, hp: 1 });
+      sys.ignite(w.state, t.tx, t.ty);
+      w.refreshViews();`);
     await openOn(`i => i.target.type === 'fire'`);
     await action('Contain the fire').click();
     await page.locator('.mg-fireline.in').waitFor();

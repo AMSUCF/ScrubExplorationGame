@@ -107,4 +107,4 @@ One-time setup: go to **Settings → Pages → Source** and choose **GitHub Acti
 | `public/art/` | Drop-in folder for finished illustrations (listed in `manifest.json`); each replaces the placeholder with the same key. |
 | `docs/DESIGN.md` | The game design doc. |
 | `docs/ART_ASSET_BRIEF.md` | The illustration brief: style guide, every asset with sizes and anchors, and the field marks for each species. |
-| `docs/ART_ASSET_BRIEF_2.md`, `docs/art-requests.json` | The art still needed for seasons, weather, fire and mini-games, as a brief and as one prompt per asset for image generation. |
+| `docs/ART_ASSET_BRIEF_2.md`, `docs/art-requests.json` | The delivered seasons, weather, fire and mini-game art specifications, with one prompt per asset. |

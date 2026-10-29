@@ -173,6 +173,9 @@ body:has(.overlay.in) .home-nav, body:has(.action-dock:not([hidden])) .home-nav 
 }
 @media (max-width: 350px) {
   .status { min-width: 86px; }
+  /* The icon, value and accessible Battery meter label remain; the extra word
+     otherwise clips inside the narrow battery pill on small phones. */
+  .battery-text small { display: none; }
   .hud .buttons .icon-btn { width: 40px; }
   .zone { min-width: 65px; }
   .zone-icon { display: none; }

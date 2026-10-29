@@ -28,12 +28,15 @@ The build also writes ignored review plates to `screenshots/art-catalog.png` and
 `screenshots/nature-scale.png`. The latter shows plants, wildlife, robot, and pod at one shared scale.
 See `docs/ART_DIRECTION.md` for art direction, provenance, and validation.
 
-## Placeholders still waiting for art
+## Seasons, weather, fire and mini-games
 
-The seasons, weather, fire and mini-game update draws 48 keys procedurally in `src/art/effects.ts`
-(flames, smoke, scorch, rain, lightning, fog, new litter, burrow neighbors, guide cards, mini-game
-backdrops and `ui_*` pictograms). See `docs/ART_ASSET_BRIEF_2.md` and `docs/art-requests.json`.
-Deliver them exactly like the rest of the set below; each one replaces its placeholder automatically.
+All 48 required keys from `docs/ART_ASSET_BRIEF_2.md` and `docs/art-requests.json` are
+supplied at 4×: fire/weather effects, storm litter, burrow neighbors, guide cards,
+mini-game backdrops and 22 matching pictograms. The full set now has 207 PNGs.
+Retained paintings, reviewed crop masks and provenance are in
+`scripts/art/source/seasons/`; matching vector art is in `scripts/art/seasons.mjs`.
+`npm run art:build` regenerates the set and `screenshots/seasons-catalog.png`.
+Optional frames listed at the end of the second brief are not required deliveries.
 
 ## Replacing an illustration
 

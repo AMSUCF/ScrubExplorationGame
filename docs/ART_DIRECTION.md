@@ -11,8 +11,8 @@ supersedes the first brief's flat nature silhouettes while retaining its warm, g
 
 ## Delivery and integration
 
-`public/art/` contains **159 PNGs** at 4× logical resolution, plus the WebP title illustration.
-All **66 required texture keys** in the brief are supplied. The set also includes **58 UI
+`public/art/` contains **207 PNGs** at 4× logical resolution, plus the WebP title illustration.
+All **66 required texture keys** in the brief are supplied. The set also includes **80 UI
 pictograms**, four shelf figurines, a future green anole, an edge bush, and small habitat decorations.
 The brief's optional additional robot animation frames and dedicated choked-plant variants remain
 optional future work: the game already animates the antennas, blinks, swaps happy eyes, and tints
@@ -54,13 +54,23 @@ choked plants.
   reduced-motion preference. Nunito and Fraunces are bundled locally, including their SIL Open
   Font License notices; the game makes no Google Fonts requests.
 
-## Placeholders for the seasons, weather and fire update
+## Seasons, weather, fire and mini-games
 
-Weather, fire, storm litter, burrow neighbors, guide cards, mini-game backdrops and 22 new pictograms
-are drawn procedurally in `src/art/effects.ts` until they are illustrated. They are listed with sizes,
-anchors, field marks and image-generation prompts in [ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md) and
-[art-requests.json](art-requests.json). `art:check` only covers delivered keys, so the placeholders do
-not affect it; `npm test` checks that every placeholder is either requested or delivered.
+All **48 required second-brief keys** in [art-requests.json](art-requests.json) are delivered.
+The set adds 15 fire/weather effects, three storm-litter objects, three burrow neighbors,
+three guide cards, two mini-game backdrops and 22 pictograms. Painted species retain the
+frog's mottled pale warty skin and golden eyes, the scarab's ridged covers and digging legs,
+and the wingless cricket's hump and long antennae. All face right.
+
+`scripts/art/source/seasons/` retains the original paintings and reviewed crops. The guide
+cards have opaque interiors and transparent rounded corners. The low-contrast quartz sand
+leaves room for white interactive runners; the empty burrow follows the exact scope path
+and chamber coordinates. `seasons.mjs` supplies matching vector pictograms and effects,
+including translucent smoke, soft mist/glows, feathered ground decals and fresh resprouts.
+`npm run art:build` regenerates these with the rest of the set and writes
+`screenshots/seasons-catalog.png` for review. `art:check` requires every second-brief key,
+checks its requested dimensions, and verifies card/backdrop corner and interior alpha.
+The optional extra animation frames, burnt plants and robot tool poses remain future polish.
 
 ## Natural-history decisions
 

@@ -1,6 +1,10 @@
 # Scrub Bot — Art Brief 2: seasons, weather, fire and mini-games
 
-This brief lists every new illustration needed for the seasons, weather, fire-ecology, edge-arrival and mini-game update. Each key is already in the game as a **procedural placeholder**, drawn in `src/art/effects.ts` at the logical size below. A finished PNG with the same key replaces its placeholder automatically. Assets can arrive one at a time.
+> Delivered: all 48 required keys below now ship in `public/art/` at 4× resolution.
+> See `ART_DIRECTION.md` and `scripts/art/source/seasons/README.md` for sources,
+> regeneration and review. The optional variants at the end remain future polish.
+
+This brief records the illustration requirements for the seasons, weather, fire-ecology, edge-arrival and mini-game update. Each delivered PNG replaces a **procedural fallback**, drawn in `src/art/effects.ts` at the logical size below. Texture keys, dimensions and anchors remain the same in either form.
 
 A machine-readable copy of this list, with one image-generation prompt per asset, is in [`art-requests.json`](art-requests.json). `npm test` checks that the file covers every placeholder at the right size.
 

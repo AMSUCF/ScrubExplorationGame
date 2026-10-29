@@ -1,0 +1,85 @@
+{
+  "frog": {
+    "file": "neighbors-litter.png",
+    "rect": {
+      "left": 0,
+      "top": 90,
+      "width": 510,
+      "height": 420
+    }
+  },
+  "beetle": {
+    "file": "neighbors-litter.png",
+    "rect": {
+      "left": 520,
+      "top": 100,
+      "width": 440,
+      "height": 410
+    }
+  },
+  "cricket": {
+    "file": "cricket.png",
+    "rect": {
+      "left": 0,
+      "top": 0,
+      "width": 1536,
+      "height": 1024
+    }
+  },
+  "balloon": {
+    "file": "neighbors-litter.png",
+    "rect": {
+      "left": 0,
+      "top": 520,
+      "width": 635,
+      "height": 480
+    },
+    "mask": "M0 0H510V300L635 370V480H0Z"
+  },
+  "plastic": {
+    "file": "neighbors-litter.png",
+    "rect": {
+      "left": 535,
+      "top": 520,
+      "width": 490,
+      "height": 440
+    },
+    "mask": "M0 0H490V440H200L0 250Z"
+  },
+  "can": {
+    "file": "neighbors-litter.png",
+    "rect": {
+      "left": 1060,
+      "top": 540,
+      "width": 476,
+      "height": 400
+    }
+  },
+  "fire": {
+    "file": "guide-cards.png",
+    "rect": {
+      "left": 45,
+      "top": 66,
+      "width": 600,
+      "height": 600
+    }
+  },
+  "storm": {
+    "file": "guide-cards.png",
+    "rect": {
+      "left": 726,
+      "top": 66,
+      "width": 600,
+      "height": 600
+    }
+  },
+  "edge": {
+    "file": "guide-cards.png",
+    "rect": {
+      "left": 1415,
+      "top": 66,
+      "width": 600,
+      "height": 600
+    }
+  }
+}

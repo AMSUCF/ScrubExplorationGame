@@ -1,10 +1,11 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import sharp from 'sharp';
 import { hydro, prop, room } from './shapes.mjs';
 import { ICON_ART, iconSvg } from './icons.mjs';
 import { buildNature } from './nature.mjs';
+import { buildSeasons } from './seasons.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const out = path.join(root, 'public/art');
@@ -113,6 +114,7 @@ for (const key of Object.keys(ICON_ART)) await emit(`ui_${key}`, 64, 64, Buffer.
 
 // The retained botanical paintings supersede the first-pass silhouettes and vector nature props.
 await buildNature(emit, out);
+await buildSeasons(emit);
 
 await writeFile(path.join(out, 'manifest.json'), `${JSON.stringify(Object.keys(catalog), null, 2)}\n`);
 await writeFile(path.join(root, 'src/art/catalog.json'), `${JSON.stringify(catalog, null, 2)}\n`);
@@ -155,3 +157,14 @@ for (const [keys, startX, baseline, animal] of [
   }
 }
 await sharp({ create: { width: 1600, height: 1140, channels: 3, background: '#f5eddc' } }).composite(plate).png().toFile(path.join(root, 'screenshots/nature-scale.png'));
+
+// Review all second-brief assets together, including their matching pictograms.
+const { assets: requests } = JSON.parse(await readFile(path.join(root, 'docs/art-requests.json'), 'utf8'));
+const seasonalCells = [];
+for (let i = 0; i < requests.length; i++) {
+  const { key } = requests[i];
+  const x = (i % 8) * 128, y = Math.floor(i / 8) * 126;
+  seasonalCells.push({ input: await sharp(path.join(out, `${key}.png`)).resize(110, 96, { fit: 'contain', background: '#f2e7cc' }).png().toBuffer(), left: x + 9, top: y + 4 });
+  seasonalCells.push({ input: Buffer.from(`<svg width="128" height="22"><text x="64" y="15" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#625342">${key}</text></svg>`), left: x, top: y + 102 });
+}
+await sharp({ create: { width: 1024, height: Math.ceil(requests.length / 8) * 126, channels: 3, background: '#f2e7cc' } }).composite(seasonalCells).png().toFile(path.join(root, 'screenshots/seasons-catalog.png'));

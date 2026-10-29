@@ -20,10 +20,21 @@ const required = ['robot', 'robot_blink', 'robot_happy', 'antenna', 'crate', 'po
   ...['palmetto', 'rosemary', 'oak', 'hickory'].map(s => `sprig_${s}`),
   ...['empty', 'sown', 'sprout', 'ready'].flatMap(s => ['dry', 'wet'].map(w => `hydro_${s}_${w}`))];
 for (const key of required) assert(manifest.includes(key), `Missing brief asset: ${key}`);
+const requests = JSON.parse(await readFile(path.join(root, 'docs/art-requests.json'), 'utf8')).assets;
+for (const asset of requests) {
+  assert(manifest.includes(asset.key), `Missing second-brief asset: ${asset.key}`);
+  assert.deepEqual(catalog[asset.key], asset.logical, `${asset.key}: request dimensions differ`);
+  if (asset.group === 'Field guide cards' || asset.group === 'Mini-game backdrops') {
+    const { data, info } = await sharp(path.join(dir, `${asset.key}.png`)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    assert.equal(data[3], 0, `${asset.key}: rounded corner must be transparent`);
+    assert.equal(data[((Math.floor(info.height / 2) * info.width + Math.floor(info.width / 2)) * 4) + 3], 255, `${asset.key}: interior must be opaque`);
+  }
+}
 
 for (const key of manifest) {
   const pic = sharp(path.join(dir, `${key}.png`));
   const meta = await pic.metadata();
+  assert.equal(meta.space, 'srgb', `${key}: delivery must use sRGB`);
   const [w, h] = catalog[key];
   assert.equal(meta.width, w * 4, `${key}: wrong width`);
   assert.equal(meta.height, h * 4, `${key}: wrong height`);
@@ -66,4 +77,4 @@ for (const font of ['nunito', 'fraunces']) {
 }
 const splash = await sharp(path.join(dir, 'splash.webp')).metadata();
 assert(splash.width >= 1440 && splash.width > splash.height, 'Splash must be a large landscape illustration');
-console.log(`ART OK — ${manifest.length} assets, ${required.length} required brief keys, 4× dimensions, transparent sprites, seamless ground edges, opaque surfaces, fonts and splash verified.`);
+console.log(`ART OK — ${manifest.length} assets, ${required.length} original + ${requests.length} second-brief keys, 4× sRGB delivery, transparent sprites, rounded cards, seamless ground edges, opaque surfaces, fonts and splash verified.`);
