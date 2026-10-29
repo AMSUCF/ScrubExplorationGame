@@ -37,6 +37,8 @@ export class IntroScene extends Phaser.Scene {
     audio.ambient('day');
     audio.sfx('whoosh', { vol: 0.9 });
     groundImage(this);
+    // Without world bounds Arcade physics clamps the robot to the screen-sized default box.
+    this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     for (const e of this.state.entities) {
       if (isAnimal(e)) {
         this.add.image(e.x, e.y, tex(this, e.species)).setOrigin(0.5, 0.85).setDisplaySize(...worldSize(e, this.state.day)).setDepth(e.y);

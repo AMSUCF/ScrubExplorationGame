@@ -56,6 +56,8 @@ export class BootScene extends Phaser.Scene {
     let groundReady = false;
     const ground = new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       .then(() => buildGround(this))
+      // buildGround falls back to plain sand itself; this only guards the game start.
+      .catch((e) => console.warn('No ground texture.', e))
       .then(() => void (groundReady = true));
     const choice = await title;
     // A very quick tap on a slow device: bring the loading screen back for the last moment.

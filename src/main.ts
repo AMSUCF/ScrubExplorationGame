@@ -16,8 +16,11 @@ import * as fire from './systems/fire';
 import * as progress from './systems/progress';
 import { nightTick } from './systems/dayCycle';
 
-// Render at device pixel ratio (capped for performance) so the art stays crisp on phones.
-const dpr = Math.min(window.devicePixelRatio || 1, 2);
+// Render at the device pixel ratio so the art stays crisp on phones. @3x phones (most iPhones) get their
+// full resolution, since a 2x canvas stretched 1.5x by the browser looks soft. Devices that report under
+// 4 GB of memory stay at 2x: a 3x canvas has 2.25 times the pixels to fill and hold.
+const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+const dpr = Math.min(window.devicePixelRatio || 1, memory < 4 ? 2 : 3);
 const parent = document.getElementById('game')!;
 
 function viewport(): { w: number; h: number } {
@@ -38,8 +41,9 @@ const game = new Phaser.Game({
   physics: { default: 'arcade', arcade: { debug: false } },
   input: { keyboard: false, mouse: true, touch: true, activePointers: 2 },
   // zoom !== 1 would otherwise switch Phaser into pixel-art mode (nearest sampling, rounded positions),
-  // which makes the painted ground and sprites blocky on high-DPI phones.
-  render: { antialias: true, roundPixels: false, pixelArt: false },
+  // which makes the painted ground and sprites blocky on high-DPI phones. Multisampling only smooths
+  // Graphics strokes, which high-DPI screens already draw finely, so they skip its memory and fill cost.
+  render: { antialias: true, antialiasGL: dpr === 1, roundPixels: false, pixelArt: false },
   scene: [BootScene, IntroScene, WorldScene, HomeScene],
 });
 game.registry.set('dpr', dpr);
