@@ -14,7 +14,7 @@ export interface DigResult {
 
 const TIME_LIMIT = 50;
 
-/** Trace each pale runner from the clump out to its green tip, under the sand. */
+/** Trace each faint runner from the clump out to its green tip, under the sand. */
 export function showRhizomeDig(seed: number): Promise<DigResult> {
   const r = generateRhizome(seed);
   const work = newDig(r);
@@ -31,7 +31,7 @@ export function showRhizomeDig(seed: number): Promise<DigResult> {
        </svg>`,
       `<div class="rz-progress"></div>
        <div class="rz-timer"><i></i></div>
-       <ul class="mg-tips"><li><b>Start at the clump</b> and drag along the faint pale lines.</li>
+       <ul class="mg-tips"><li><b>Start at the clump</b> and drag along the faint lines in the sand.</li>
          <li>Runners only count when they <b>connect back to the clump</b>.</li>
          <li>Reach every <b>green shoot</b> before the sand settles.</li></ul>
        <div class="rz-result" hidden></div>
@@ -48,12 +48,16 @@ export function showRhizomeDig(seed: number): Promise<DigResult> {
     let stroke: { id: number; pts: Point[] } | null = null;
 
     const paint = () => {
-      runners.innerHTML = r.nodes.map((p, i) => {
-        if (i === 0) return '';
+      const lines = (lit: boolean) => r.nodes.map((p, i) => {
+        if (i === 0 || work.covered[i] !== lit) return '';
         const q = r.nodes[r.parent[i]];
-        const lit = work.covered[i];
-        return `<line x1="${q.x}" y1="${q.y}" x2="${p.x}" y2="${p.y}" stroke="${lit ? '#fff6d8' : '#efe3c4'}" stroke-width="${lit ? 9 : 6}" stroke-linecap="round" opacity="${lit ? 1 : 0.32}"/>`;
+        return `<line x1="${q.x}" y1="${q.y}" x2="${p.x}" y2="${p.y}"/>`;
       }).join('');
+      // Hidden runners show as faint furrows in the pale sand; traced ones glow cream over a warm edge.
+      // Opacity is set per group, so overlapping round caps don't darken the joints.
+      runners.innerHTML = `<g stroke="#9a7a4c" stroke-width="6" stroke-linecap="round" opacity="0.4">${lines(false)}</g>
+        <g stroke="#b08c5a" stroke-width="12" stroke-linecap="round" opacity="0.45">${lines(true)}</g>
+        <g stroke="#fff6d8" stroke-width="8" stroke-linecap="round">${lines(true)}</g>`;
       tips.innerHTML = r.tips.map((i) => {
         const p = r.nodes[i];
         return `<image href="${services.icon('cogon')}" x="${p.x - 15}" y="${p.y - 26}" width="30" height="30" opacity="${work.covered[i] ? 0.35 : 1}"/>${work.covered[i] ? `<circle cx="${p.x}" cy="${p.y}" r="9" fill="#a5bb8d"/>` : ''}`;

@@ -9,6 +9,7 @@ import { hash2 } from '../systems/rng';
 import { generateHomeTextures } from './home';
 import { generateRobotTextures } from './robot';
 import catalog from './catalog.json';
+import { EFFECT_SIZES, PICTOGRAMS } from './effectSizes';
 
 export const ART_SCALE = 2;
 
@@ -680,9 +681,11 @@ export function generateTextures(scene: Phaser.Scene): void {
   make(scene, 'ring', 32, 32, drawRing);
 
   // Optional illustrations and the pictogram set also get logical-size Phaser textures.
-  // Room shells are lazy, and seamless tiles are assembled into the ground by buildGround().
+  // Room shells are lazy, seamless tiles are assembled into the ground by buildGround(), and
+  // generateEffectTextures() makes the seasons, weather, fire and mini-game keys.
+  const effects = new Set([...Object.keys(EFFECT_SIZES), ...PICTOGRAMS.map((k) => `ui_${k}`)]);
   for (const [key, [w, h]] of Object.entries(catalog)) {
-    if (scene.textures.exists(key) || key.startsWith('room') || key.startsWith('ground_')) continue;
+    if (scene.textures.exists(key) || effects.has(key) || key.startsWith('room') || key.startsWith('ground_')) continue;
     if (artImage(scene, key)) make(scene, key, w, h, () => undefined);
   }
 }

@@ -47,6 +47,12 @@ try {
   await page.waitForFunction(() => window.__game.scene.isActive('World') && window.__game.scene.getScene('World').weatherFx);
   await page.waitForTimeout(900);
   await shot('2-storm');
+  // Delivered art is 4x and placeholders 2x: effects sized by scale must keep their logical size either way.
+  const sizes = await world(`
+    const p = w.weatherFx.rain.alive[0], puddle = w.weatherFx.puddles[0];
+    return { rain: p.frame.width * p.scaleX, puddle: puddle.displayWidth };`);
+  assert(Math.abs(sizes.rain - 3) < 0.01, `raindrops should be 3 world px wide, not ${sizes.rain}`);
+  assert(sizes.puddle >= 36 && sizes.puddle <= 65, `puddles should be 36-65 world px wide, not ${sizes.puddle}`);
   await world(`w.nextStrike = 1; w.fireRng = () => 0.01;`);
   await page.waitForFunction(() => window.__game.scene.getScene('World').state.fires.length > 0, null, { timeout: 8000 }).catch(() => undefined);
   // Lightning picks its own spot; make sure there is a fire near the robot for the next steps.

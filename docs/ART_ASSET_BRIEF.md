@@ -1,6 +1,6 @@
 # Scrub Bot — Illustration Asset Brief
 
-> **New art needed:** the seasons, weather, fire and mini-game update added 48 procedural placeholders. Their brief and
+> **Second brief delivered:** the 48 seasons, weather, fire and mini-game keys now ship in `public/art/`. Their brief and
 > image-generation prompts are in [ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md) and [art-requests.json](art-requests.json).
 >
 > The tables below record the first illustration pass. The habitat-scale refinement enlarges world

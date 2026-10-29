@@ -64,7 +64,7 @@ and the wingless cricket's hump and long antennae. All face right.
 
 `scripts/art/source/seasons/` retains the original paintings and reviewed crops. The guide
 cards have opaque interiors and transparent rounded corners. The low-contrast quartz sand
-leaves room for white interactive runners; the empty burrow follows the exact scope path
+keeps the dig's faint runner furrows and lit cream runners legible; the empty burrow follows the exact scope path
 and chamber coordinates. `seasons.mjs` supplies matching vector pictograms and effects,
 including translucent smoke, soft mist/glows, feathered ground decals and fresh resprouts.
 `npm run art:build` regenerates these with the rest of the set and writes
@@ -92,10 +92,11 @@ not identification photographs.
 The title, species, and major furniture were created as original generated illustrations for this
 project. No downloaded wildlife photography or third-party game sprites are included. Retained
 production sheets are in `scripts/art/source/`. The eleven rebuilt sheets in `source/nature/` supply
-all plants, wildlife, cuttings, ground materials, and botanical decorations. Earlier species sheets
+all plants, the main wildlife, cuttings, ground materials, and botanical decorations; `source/seasons/`
+supplies the burrow neighbors, storm litter, guide cards and dig sand. Earlier species sheets
 are retained as original development sources. `sources.json` maps every delivered PNG to its source.
 Furniture props, room shells, effects, figurines, and pictograms use the original vector constructions
-in `shapes.mjs` and `icons.mjs`; `nature.mjs` imports the paintings, preserves disconnected foliage,
+in `shapes.mjs`, `icons.mjs` and `seasons.mjs`; `nature.mjs` imports the paintings, preserves disconnected foliage,
 and builds the ground transitions, projected shadows, and vine root knot.
 
 Run `npm run art:build` to separate the retained silhouettes, pad and size their canvases, rasterize

@@ -131,11 +131,11 @@ Seasons tint the light (spring blush, summer gold, fall amber, winter blue) and 
 - Phaser 3 and TypeScript, built with Vite.
 - Game logic is pure TS in `src/systems` and unit-tested, including a scripted full playthrough.
 - The HUD, radial menu and cards are DOM, so they stay crisp and accessible (aria labels on icon buttons).
-- Rendering is at device pixel ratio (capped at 2×), with art generated at 2×.
+- Rendering is at device pixel ratio (capped at 3×, or 2× on devices reporting under 4 GB of memory); the world ground is painted at 2×.
 - Saves go to localStorage and are versioned with migrations (v1 → v2 adds the home, populations and collections; v2 → v3 adds weather, per-tile burn history, fires, the seedbank, levels, goals, portraits, burrow guests and bag contents, crediting earlier progress as care points).
 
 ## Next up
-- Illustrations for the new placeholders ([ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md)).
+- Optional art polish from [ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md): extra wildfire frames, burnt plants and robot tool poses.
 - More zones (pond edge, flatwoods) and a gopher frog breeding pond.
 - Native wildflowers and pollinators; scrub lizards and native green anoles returning once brown anoles are scarce.
 - More collectibles for the shelf (found trinkets) and decorations from milestones and levels.

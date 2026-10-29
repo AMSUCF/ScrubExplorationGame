@@ -208,3 +208,7 @@ body:has(.overlay.in) .home-nav, body:has(.action-dock:not([hidden])) .home-nav 
   .care-header p { margin: 2px 0; }
   .home-nav { left: 16px; transform: none; bottom: 12px; }
 }
+
+/* The painted foil balloon lies on the sand in the bottom of its upright box. In DOM thumbnails,
+   fill the box's width and keep the bottom, so it is as large as the other litter. */
+img[src$="art/balloon.png"] { object-fit: cover; object-position: 50% 100%; }

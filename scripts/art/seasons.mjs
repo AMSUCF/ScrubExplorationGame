@@ -2,6 +2,7 @@
 // painted animals, litter and guide vignettes are retained separately.
 import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { path as p, ellipse as e, rect as r, group as g, leaf, svg, random } from './shapes.mjs';
 
 const blue = '#99bdc4', ink = '#70949c', cream = '#fff6df';
@@ -39,7 +40,7 @@ export const SEASON_ICONS = {
  tank: r(13,13,38,44,10,'#d1e1d9',ink,2)+p('M15 36Q25 32 33 36T49 36V47Q49 55 40 55H23Q15 55 15 47Z',blue,'none')+r(23,8,18,6,2,'#a9beb5',ink,2)+line('M20 22V43',cream,3),
 };
 
-const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
+const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="glow"><stop stop-color="#fbffd8"/><stop offset=".25" stop-color="#e2f27e" stop-opacity=".9"/><stop offset="1" stop-color="#b4d65a" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
 const makeFlecks = (seed) => {
  const rng = random(seed);
  return (n,w,h,colors,size=.4) => Array.from({length:n},()=>e(2+rng()*(w-4),2+rng()*(h-4),size*(.3+rng()),size*(.3+rng()),colors[Math.floor(rng()*colors.length)])).join('');
@@ -49,7 +50,7 @@ function effect(key, flecks) {
  case 'wildfire': { const warm = flame.replaceAll('#e4a06c', '#ee914c').replaceAll('#b67c57', '#bd713f').replaceAll('#ffe4a4', '#fff0bd'); return g(warm,'translate(-3 -4) scale(.48 .6)')+g(warm,'translate(8 10) scale(.27 .38)')+g(warm,'translate(-1 14) scale(.24 .3)'); }
  case 'smoke': return e(12,12,12,12,'url(#smoke)')+e(9,8,7,6,'url(#smoke)');
  case 'ember': return e(3,3,3,3,'url(#soft)');
- case 'firefly': return e(4,4,4,4,'url(#soft)')+e(4,4,.55,.55,'#f3ffb6');
+ case 'firefly': return e(4,4,4,4,'url(#glow)')+e(4,4,.55,.55,'#f3ffb6');
  case 'fog_wisp': return e(64,24,64,23,'url(#mist)')+e(43,27,38,14,'url(#mist)')+e(88,22,30,12,'url(#mist)');
  case 'raindrop': return r(.8,0,1.4,14,.7,'url(#rain)');
  case 'lightning': {const bolt='M25 0L9 58H20L12 94H24L20 140L33 80H23L32 43H22L34 0Z';return `<g filter="url(#blur)" opacity=".5">${p(bolt,'#f5dd93','#f5dd93',7)}</g>`+p(bolt,'#fff5d4','none');}
@@ -65,6 +66,9 @@ function effect(key, flecks) {
  }
 }
 
+// A file path, not URL.pathname: that keeps %20 and other escapes, which sharp can't open.
+const source = (file) => fileURLToPath(new URL(`./source/seasons/${file}`, import.meta.url));
+
 export async function buildSeasons(emit) {
  // Reset the grain seed for each build, even when invoked twice in one process.
  const flecks = makeFlecks(2036);
@@ -73,8 +77,8 @@ export async function buildSeasons(emit) {
   if(a.key.startsWith('ui_')) await emit(a.key,64,64,Buffer.from(svg(64,64,SEASON_ICONS[a.key.slice(3)])),'seasons.mjs');
   else if(a.group === 'Fire and weather effects') await emit(a.key,...a.logical,Buffer.from(svg(...a.logical,defs+effect(a.key, flecks))),'seasons.mjs');
  }
- // Low-contrast quartz painting keeps the game's overlaid white runners legible.
- const sand = await sharp(new URL('./source/seasons/sand.png',import.meta.url).pathname).resize(1080,1080,{fit:'cover'}).toBuffer();
+ // Low-contrast quartz painting keeps the game's overlaid runner lines legible.
+ const sand = await sharp(source('sand.png')).resize(1080,1080,{fit:'cover'}).toBuffer();
  const flat = await sharp(sand).composite([{input:Buffer.from(svg(270,270,r(0,0,270,270,0,'#f0e5ca').replace('/>',' opacity=".65"/>')))}]).toBuffer();
  const rounded = Buffer.from(svg(270,270,r(0,0,270,270,14,'white')));
  await emit('dig_sand',270,270,await sharp(flat).composite([{input:rounded,blend:'dest-in'}]).png().toBuffer(),'seasons.mjs + source/seasons/sand.png');
@@ -87,13 +91,13 @@ export async function buildSeasons(emit) {
  const crops = JSON.parse(await readFile(new URL('./source/seasons/crops.json',import.meta.url),'utf8'));
  for(const [key,box] of Object.entries(crops)) {
   const a=handoff.assets.find(a=>a.key===key), [w,h]=a.pixels;
-  let crop=await sharp(new URL(`./source/seasons/${box.file}`,import.meta.url).pathname).extract(box.rect).png().toBuffer();
+  let crop=await sharp(source(box.file)).extract(box.rect).png().toBuffer();
   if (box.mask) crop=await sharp(crop).composite([{input:Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${box.rect.width}" height="${box.rect.height}"><path d="${box.mask}" fill="white"/></svg>`),blend:'dest-in'}]).png().toBuffer();
   const pic=await sharp(crop).trim({threshold:8}).resize(Math.round(w*.94),Math.round(h*.94),{fit:'inside'}).toBuffer({resolveWithObject:true});
   const top=a.anchor.startsWith('bottom')?h-pic.info.height:Math.round((h-pic.info.height)/2);
   let canvas=await sharp({create:{width:w,height:h,channels:4,background:'#00000000'}}).composite([{input:pic.data,left:Math.round((w-pic.info.width)/2),top}]).png().toBuffer();
   if(a.group==='Field guide cards') {
-   canvas=await sharp(new URL(`./source/seasons/${box.file}`,import.meta.url).pathname).extract(box.rect).flatten({background:'#ecdfb8'}).resize(w,h,{fit:'cover'}).composite([{input:Buffer.from(svg(...a.logical,r(0,0,...a.logical,6,'white'))),blend:'dest-in'}]).png().toBuffer();
+   canvas=await sharp(source(box.file)).extract(box.rect).flatten({background:'#ecdfb8'}).resize(w,h,{fit:'cover'}).composite([{input:Buffer.from(svg(...a.logical,r(0,0,...a.logical,6,'white'))),blend:'dest-in'}]).png().toBuffer();
   }
   await emit(key,...a.logical,canvas,`source/seasons/${box.file}`);
  }

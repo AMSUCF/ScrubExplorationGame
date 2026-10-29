@@ -2,7 +2,7 @@
 // storm gloom, frosty cold snaps, summer fireflies at dusk, and a gentle seasonal colour wash.
 import Phaser from 'phaser';
 import { WORLD_H, WORLD_W } from '../../config';
-import { tex } from '../../art/effects';
+import { tex, texScale } from '../../art/effects';
 import { Season } from '../../systems/calendar';
 import { Weather, WEATHER } from '../../systems/weather';
 import { hash2 } from '../../systems/rng';
@@ -23,6 +23,7 @@ export class WeatherFx {
   private rain: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private drift: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private frost: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private fog: Phaser.GameObjects.Image[] = [];
   private puddles: Phaser.GameObjects.Image[] = [];
   private gloom: number;
@@ -46,20 +47,21 @@ export class WeatherFx {
         rotate: angle,
         lifespan: 650,
         alpha: { start: 0.75, end: 0.3 },
-        scale: 0.5,
+        scale: 0.5 * texScale(scene, 'raindrop'),
         frequency: Math.max(6, 40 - info.rain * 34),
         quantity: Math.ceil(info.rain * 3),
       }).setDepth(199980);
       // Puddles gather in low spots on wet days.
       for (let i = 0; i < 26; i++) {
         const x = hash2(i, 3, 77) * WORLD_W, y = hash2(i, 9, 77) * WORLD_H;
-        this.puddles.push(scene.add.image(x, y, tex(scene, 'puddle')).setScale(0.5 + hash2(i, 1, 78) * 0.4).setAlpha(0.7 * info.rain).setDepth(-3));
+        this.puddles.push(scene.add.image(x, y, tex(scene, 'puddle')).setScale((0.5 + hash2(i, 1, 78) * 0.4) * texScale(scene, 'puddle')).setAlpha(0.7 * info.rain).setDepth(-3));
       }
     }
 
     // Wind carries something every season: petals, cogon fluff, oak leaves, dry grass seeds.
     const drift = { spring: 'petal', summer: 'seed_fluff', fall: 'leaf_blown', winter: 'leaf_blown' }[season];
     if (speed > 0.25 || season === 'fall' || season === 'spring') {
+      const k = texScale(scene, drift);
       this.drift = scene.add.particles(0, 0, tex(scene, drift), {
         emitZone: { type: 'random', source: this.driftZone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
         speedX: { min: wind.x * 60 * (0.4 + speed), max: wind.x * 140 * (0.4 + speed) },
@@ -67,29 +69,45 @@ export class WeatherFx {
         rotate: { start: 0, end: 360 * (Math.random() < 0.5 ? 1 : -1) },
         lifespan: 4200,
         alpha: { start: 0.9, end: 0 },
-        scale: { min: 0.35, max: 0.55 },
+        scale: { min: 0.35 * k, max: 0.55 * k },
         frequency: Math.max(60, 420 - speed * 380),
       }).setDepth(199970);
     }
 
     if (weather.kind === 'fog') {
       for (let i = 0; i < 9; i++) {
-        this.fog.push(scene.add.image(0, 0, tex(scene, 'fog_wisp')).setScale(2.4 + (i % 3) * 0.8).setAlpha(0.45).setDepth(199960).setData('o', { x: hash2(i, 2, 5), y: hash2(i, 4, 5), v: 4 + (i % 4) * 3 }));
+        this.fog.push(scene.add.image(0, 0, tex(scene, 'fog_wisp')).setScale((2.4 + (i % 3) * 0.8) * texScale(scene, 'fog_wisp')).setAlpha(0.45).setDepth(199960).setData('o', { x: hash2(i, 2, 5), y: hash2(i, 4, 5), v: 4 + (i % 4) * 3 }));
       }
     }
 
     if (season === 'summer' || season === 'spring') {
+      const k = texScale(scene, 'firefly');
       this.fireflies = scene.add.particles(0, 0, tex(scene, 'firefly'), {
         emitZone: { type: 'random', source: this.driftZone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
         speedX: { min: -12, max: 12 },
         speedY: { min: -10, max: 6 },
         lifespan: 3200,
         alpha: { values: [0, 1, 0.3, 1, 0] } as unknown as Phaser.Types.GameObjects.Particles.EmitterOpOnEmitType,
-        scale: { min: 0.4, max: 0.7 },
+        scale: { min: 0.4 * k, max: 0.7 * k },
         blendMode: Phaser.BlendModes.ADD,
         frequency: 260,
         emitting: false,
       }).setDepth(199985);
+    }
+
+    // A cold snap: frost crystals glint here and there, then melt away.
+    if (weather.kind === 'cold') {
+      const k = texScale(scene, 'frost');
+      this.frost = scene.add.particles(0, 0, tex(scene, 'frost'), {
+        emitZone: { type: 'random', source: this.driftZone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
+        speedX: { min: -3, max: 3 },
+        speedY: { min: 2, max: 8 },
+        rotate: { min: 0, max: 60 },
+        lifespan: 2600,
+        alpha: { values: [0, 0.85, 0.85, 0] } as unknown as Phaser.Types.GameObjects.Particles.EmitterOpOnEmitType,
+        scale: { min: 0.7 * k, max: 1.1 * k },
+        frequency: 140,
+      }).setDepth(199975);
     }
   }
 
@@ -121,6 +139,6 @@ export class WeatherFx {
   }
 
   destroy(): void {
-    [this.seasonTint, this.weatherTint, this.rain, this.drift, this.fireflies, ...this.fog, ...this.puddles].forEach((o) => o?.destroy());
+    [this.seasonTint, this.weatherTint, this.rain, this.drift, this.fireflies, this.frost, ...this.fog, ...this.puddles].forEach((o) => o?.destroy());
   }
 }

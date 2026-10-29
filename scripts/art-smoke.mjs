@@ -61,11 +61,17 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(250);
   await page.screenshot({ path: 'screenshots/world-final.png' });
-  const missing = await page.evaluate(() => {
+  // Art only DOM cards and mini-games show (DOM_ONLY in src/art/effects.ts) is fetched by URL once the
+  // game starts, instead of becoming a Phaser texture.
+  const domOnly = ['dig_sand', 'burrow_section', 'fire', 'storm', 'edge', 'frog', 'beetle', 'cricket'];
+  const missing = await page.evaluate((domOnly) => {
     const g = window.__game;
-    return g.cache.json.get('art-manifest').filter(k => !k.startsWith('room') && !k.startsWith('ground_') && !g.textures.exists(k));
-  });
+    return g.cache.json.get('art-manifest').filter(k => !k.startsWith('room') && !k.startsWith('ground_') && !domOnly.includes(k) && !g.textures.exists(k));
+  }, domOnly);
   assert.deepEqual(missing, [], 'Production illustrations missing Phaser textures');
+  const unfetched = await page.evaluate((domOnly) => domOnly.filter((k) =>
+    !performance.getEntriesByType('resource').some((e) => new URL(e.name).pathname.endsWith(`/art/${k}.png`))), domOnly);
+  assert.deepEqual(unfetched, [], 'DOM-only art was not fetched after the game started');
 
   const materials = await page.evaluate(() => {
     const ground = window.__game.textures.get('ground'), c = ground.getContext(), s = ground.customData.scale ?? 1;

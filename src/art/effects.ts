@@ -2,7 +2,7 @@
 // its logical size in docs/ART_ASSET_BRIEF_2.md; a delivered PNG with the same key replaces it
 // (make() prefers art), so illustrations can arrive one at a time.
 import Phaser from 'phaser';
-import { Ctx, circle, ellipse, line, make, roundRect, shadow } from './placeholders';
+import { ART_SCALE, Ctx, circle, ellipse, line, make, roundRect, shadow } from './placeholders';
 
 import { EFFECT_SIZES, PICTOGRAMS } from './effectSizes';
 
@@ -12,6 +12,19 @@ export { EFFECT_SIZES, PICTOGRAMS };
 export function tex(scene: Phaser.Scene, key: string): string {
   return scene.textures.exists(`art:${key}`) ? `art:${key}` : key;
 }
+
+/**
+ * The scale that shows tex(scene, key) at its placeholder's size. Placeholders are drawn at ART_SCALE
+ * and delivered art at 4×, so anything sized with setScale or a particle scale multiplies by this;
+ * setDisplaySize needs nothing.
+ */
+export function texScale(scene: Phaser.Scene, key: string): number {
+  const width = (scene.textures.get(tex(scene, key)).getSourceImage() as { width: number }).width;
+  return EFFECT_SIZES[key] && width ? (EFFECT_SIZES[key][0] * ART_SCALE) / width : 1;
+}
+
+/** Shown only in DOM cards and mini-games, which load a delivered PNG by its URL (see services.icon). */
+export const DOM_ONLY: ReadonlySet<string> = new Set(['dig_sand', 'burrow_section', 'fire', 'storm', 'edge', 'frog', 'beetle', 'cricket']);
 
 function poly(c: Ctx, pts: number[][], fill: string, stroke?: string, lw = 1.4) {
   c.beginPath();
@@ -606,7 +619,8 @@ function pict(key: string, c: Ctx) {
   }
 }
 
-export function generateEffectTextures(scene: Phaser.Scene): void {
+/** Placeholders for every effect key, except DOM-only ones whose art was delivered (`delivered` keys). */
+export function generateEffectTextures(scene: Phaser.Scene, delivered: ReadonlySet<string> = new Set()): void {
   const draw: Record<string, (c: Ctx) => void> = {
     wildfire: drawWildfire, smoke: drawSmoke, ember: drawEmber, scorch: drawScorch, firebreak: drawFirebreak, resprout: drawResprout,
     raindrop: drawRaindrop, puddle: drawPuddle, leaf_blown: drawLeaf, lightning: drawLightning, fog_wisp: drawFogWisp, firefly: drawFirefly,
@@ -617,6 +631,7 @@ export function generateEffectTextures(scene: Phaser.Scene): void {
     burrow_section: drawBurrowSection, dig_sand: drawDigSand,
   };
   for (const [key, fn] of Object.entries(draw)) {
+    if (DOM_ONLY.has(key) && delivered.has(key)) continue;
     const [w, h] = EFFECT_SIZES[key];
     make(scene, key, w, h, fn);
   }

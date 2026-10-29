@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { generateEffectTextures } from '../art/effects';
+import { DOM_ONLY, generateEffectTextures } from '../art/effects';
 import { buildGround, generateTextures } from '../art/placeholders';
 import { services } from '../services';
 import { loadGame } from '../systems/save';
@@ -17,7 +17,10 @@ export class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
-  /** Queue any finished illustrations listed in public/art/manifest.json (missing files are fine). */
+  /**
+   * Queue any finished illustrations listed in public/art/manifest.json (missing files are fine).
+   * Art only the DOM shows is fetched by URL after the game starts, so it doesn't hold up the title.
+   */
   preload(): void {
     this.load.on('progress', (progress: number) => {
       const bar = document.querySelector<HTMLElement>('.loading-fill');
@@ -27,15 +30,15 @@ export class BootScene extends Phaser.Scene {
     this.load.json('art-manifest', 'art/manifest.json');
     this.load.on('filecomplete-json-art-manifest', (_key: string, _type: string, keys: unknown) => {
       if (!Array.isArray(keys)) return;
-      for (const k of keys) if (typeof k === 'string') this.load.image(`art:${k}`, `art/${k}.png`);
+      for (const k of keys) if (typeof k === 'string' && !DOM_ONLY.has(k)) this.load.image(`art:${k}`, `art/${k}.png`);
     });
     this.load.on('loaderror', (file: Phaser.Loader.File) => console.warn(`Art not loaded: ${file.key}`));
   }
 
   async create(): Promise<void> {
-    generateTextures(this);
-    generateEffectTextures(this);
     const artKeys = new Set<string>(this.cache.json.get('art-manifest') as string[]);
+    generateTextures(this);
+    generateEffectTextures(this, artKeys);
     const cache = new Map<string, string>();
     services.icon = (key) => {
       // DOM cards get the full 4x illustration, with no canvas downsampling or base64 copies.
@@ -68,5 +71,7 @@ export class BootScene extends Phaser.Scene {
     await ground;
     loading?.remove();
     startGame(this, choice === 'continue' && saved ? saved : newGame());
+    // Warm the cache for the DOM-only art, so cards and mini-games open with their pictures ready.
+    for (const k of DOM_ONLY) if (artKeys.has(k)) new Image().src = services.icon(k);
   }
 }

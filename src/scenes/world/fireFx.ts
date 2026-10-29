@@ -2,7 +2,7 @@
 // embers, scorched earth that fades as the ground recovers, and raked firebreaks.
 import Phaser from 'phaser';
 import { MAP_W, WORLD_H, WORLD_W } from '../../config';
-import { tex } from '../../art/effects';
+import { tex, texScale } from '../../art/effects';
 import { tileCenter } from '../../data/map';
 import { tileIndex, zoneOf } from '../../systems/fire';
 import { GameState } from '../../systems/state';
@@ -24,16 +24,21 @@ export class FireFx {
   private smoke: Phaser.GameObjects.Particles.ParticleEmitter;
   private embers: Phaser.GameObjects.Particles.ParticleEmitter;
   private puff = 0;
+  private scorchBoost: number;
 
   constructor(private scene: Phaser.Scene, private state: GameState) {
     this.scorch = scene.add.renderTexture(0, 0, WORLD_W, WORLD_H).setOrigin(0).setDepth(-6);
     this.stamp = scene.make.image({ key: tex(scene, 'scorch'), add: false }).setDisplaySize(50, 36);
+    // The painted scorch is lighter and more open than the placeholder: darken it to read as charred.
+    this.scorchBoost = tex(scene, 'scorch') === 'scorch' ? 1 : 1.3;
+    if (this.scorchBoost > 1) this.stamp.setTint(0x6e6052);
     const w = state.weather.wind, speed = state.weather.windSpeed;
+    const smokeScale = texScale(scene, 'smoke'), emberScale = texScale(scene, 'ember');
     this.smoke = scene.add.particles(0, 0, tex(scene, 'smoke'), {
       speedX: { min: w.x * 30 * (0.3 + speed) - 6, max: w.x * 60 * (0.3 + speed) + 6 },
       speedY: { min: -38 + w.y * 20, max: -18 + w.y * 30 },
       lifespan: 2800,
-      scale: { start: 0.35, end: 1.3 },
+      scale: { start: 0.35 * smokeScale, end: 1.3 * smokeScale },
       alpha: { start: 0.5, end: 0 },
       emitting: false,
     }).setDepth(150000);
@@ -41,7 +46,7 @@ export class FireFx {
       speedX: { min: -20 + w.x * 30, max: 20 + w.x * 50 },
       speedY: { min: -110, max: -50 },
       lifespan: 1000,
-      scale: { start: 0.9, end: 0.2 },
+      scale: { start: 0.9 * emberScale, end: 0.2 * emberScale },
       alpha: { start: 1, end: 0 },
       blendMode: Phaser.BlendModes.ADD,
       emitting: false,
@@ -64,7 +69,7 @@ export class FireFx {
 
   private stampAt(tx: number, ty: number, alpha: number): void {
     const p = tileCenter(tx, ty);
-    this.stamp.setAlpha(alpha).setAngle(hash2(tx, ty, 61) * 360);
+    this.stamp.setAlpha(Math.min(1, alpha * this.scorchBoost)).setAngle(hash2(tx, ty, 61) * 360);
     this.scorch.draw(this.stamp, p.x + (hash2(tx, ty, 62) - 0.5) * 6, p.y + (hash2(tx, ty, 63) - 0.5) * 6);
   }
 
