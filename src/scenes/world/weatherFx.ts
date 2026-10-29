@@ -95,7 +95,8 @@ export class WeatherFx {
       }).setDepth(199985);
     }
 
-    // A cold snap: frost crystals glint here and there, then melt away.
+    // A cold snap: frost crystals glint here and there, then melt away. They draw a little larger than
+    // their 10 px box so the thin six-point shape stays legible.
     if (weather.kind === 'cold') {
       const k = texScale(scene, 'frost');
       this.frost = scene.add.particles(0, 0, tex(scene, 'frost'), {

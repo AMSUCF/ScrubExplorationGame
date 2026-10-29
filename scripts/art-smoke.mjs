@@ -12,6 +12,8 @@ try {
   browser = await chromium.launch();
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
+  const fetched = new Set();
+  page.on('requestfinished', (r) => fetched.add(new URL(r.url()).pathname));
   const errors = [], external = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => m.type() === 'error' && errors.push(m.text()));
@@ -69,8 +71,10 @@ try {
     return g.cache.json.get('art-manifest').filter(k => !k.startsWith('room') && !k.startsWith('ground_') && !domOnly.includes(k) && !g.textures.exists(k));
   }, domOnly);
   assert.deepEqual(missing, [], 'Production illustrations missing Phaser textures');
-  const unfetched = await page.evaluate((domOnly) => domOnly.filter((k) =>
-    !performance.getEntriesByType('resource').some((e) => new URL(e.name).pathname.endsWith(`/art/${k}.png`))), domOnly);
+  // They are fetched one at a time after Start; give the last (the large dig sand) a moment.
+  const isFetched = (k) => [...fetched].some((path) => path.endsWith(`/art/${k}.png`));
+  for (let i = 0; i < 100 && !domOnly.every(isFetched); i++) await page.waitForTimeout(100);
+  const unfetched = domOnly.filter((k) => !isFetched(k));
   assert.deepEqual(unfetched, [], 'DOM-only art was not fetched after the game started');
 
   const materials = await page.evaluate(() => {

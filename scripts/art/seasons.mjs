@@ -40,7 +40,8 @@ export const SEASON_ICONS = {
  tank: r(13,13,38,44,10,'#d1e1d9',ink,2)+p('M15 36Q25 32 33 36T49 36V47Q49 55 40 55H23Q15 55 15 47Z',blue,'none')+r(23,8,18,6,2,'#a9beb5',ink,2)+line('M20 22V43',cream,3),
 };
 
-const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="glow"><stop stop-color="#fbffd8"/><stop offset=".25" stop-color="#e2f27e" stop-opacity=".9"/><stop offset="1" stop-color="#b4d65a" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
+// Ids must differ from svg()'s own (glass, water, glow, grain): a duplicate resolves to the first.
+const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="fireflyGlow"><stop stop-color="#fbffd8"/><stop offset=".25" stop-color="#e2f27e" stop-opacity=".9"/><stop offset="1" stop-color="#b4d65a" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
 const makeFlecks = (seed) => {
  const rng = random(seed);
  return (n,w,h,colors,size=.4) => Array.from({length:n},()=>e(2+rng()*(w-4),2+rng()*(h-4),size*(.3+rng()),size*(.3+rng()),colors[Math.floor(rng()*colors.length)])).join('');
@@ -50,7 +51,7 @@ function effect(key, flecks) {
  case 'wildfire': { const warm = flame.replaceAll('#e4a06c', '#ee914c').replaceAll('#b67c57', '#bd713f').replaceAll('#ffe4a4', '#fff0bd'); return g(warm,'translate(-3 -4) scale(.48 .6)')+g(warm,'translate(8 10) scale(.27 .38)')+g(warm,'translate(-1 14) scale(.24 .3)'); }
  case 'smoke': return e(12,12,12,12,'url(#smoke)')+e(9,8,7,6,'url(#smoke)');
  case 'ember': return e(3,3,3,3,'url(#soft)');
- case 'firefly': return e(4,4,4,4,'url(#glow)')+e(4,4,.55,.55,'#f3ffb6');
+ case 'firefly': return e(4,4,4,4,'url(#fireflyGlow)')+e(4,4,.55,.55,'#f3ffb6');
  case 'fog_wisp': return e(64,24,64,23,'url(#mist)')+e(43,27,38,14,'url(#mist)')+e(88,22,30,12,'url(#mist)');
  case 'raindrop': return r(.8,0,1.4,14,.7,'url(#rain)');
  case 'lightning': {const bolt='M25 0L9 58H20L12 94H24L20 140L33 80H23L32 43H22L34 0Z';return `<g filter="url(#blur)" opacity=".5">${p(bolt,'#f5dd93','#f5dd93',7)}</g>`+p(bolt,'#fff5d4','none');}

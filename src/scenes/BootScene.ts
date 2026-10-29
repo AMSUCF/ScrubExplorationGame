@@ -71,7 +71,17 @@ export class BootScene extends Phaser.Scene {
     await ground;
     loading?.remove();
     startGame(this, choice === 'continue' && saved ? saved : newGame());
-    // Warm the cache for the DOM-only art, so cards and mini-games open with their pictures ready.
-    for (const k of DOM_ONLY) if (artKeys.has(k)) new Image().src = services.icon(k);
+    // Warm the cache for the DOM-only art, so cards and mini-games open with their pictures ready. One
+    // file at a time, the big dig sand last, so the first HUD icons aren't kept waiting on a slow link.
+    void (async () => {
+      for (const k of [...DOM_ONLY].sort((a, b) => +(a === 'dig_sand') - +(b === 'dig_sand'))) {
+        if (!artKeys.has(k)) continue;
+        await new Promise<void>((done) => {
+          const img = new Image();
+          img.onload = img.onerror = () => done();
+          img.src = services.icon(k);
+        });
+      }
+    })();
   }
 }
