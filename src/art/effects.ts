@@ -158,12 +158,17 @@ function drawFirefly(c: Ctx) {
   circle(c, 4, 4, 1.6, '#f6ffb8');
 }
 
+/** Sunlight catching a frost crystal: a four-point glint with a soft icy halo. */
 function drawFrost(c: Ctx) {
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI;
-    line(c, 5 - Math.cos(a) * 4.5, 5 - Math.sin(a) * 4.5, 5 + Math.cos(a) * 4.5, 5 + Math.sin(a) * 4.5, '#e9f6ff', 1.1);
-  }
-  circle(c, 5, 5, 1.2, '#ffffff');
+  const halo = c.createRadialGradient(5, 5, 0, 5, 5, 3.2);
+  halo.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+  halo.addColorStop(1, 'rgba(207, 229, 244, 0)');
+  c.fillStyle = halo;
+  c.fillRect(0, 0, 10, 10);
+  c.fillStyle = '#ffffff';
+  c.beginPath();
+  for (const [x, y] of [[5, 0.3], [5.6, 4.4], [9.7, 5], [5.6, 5.6], [5, 9.7], [4.4, 5.6], [0.3, 5], [4.4, 4.4]]) c.lineTo(x, y);
+  c.fill();
 }
 
 function drawPetal(c: Ctx) {
@@ -426,17 +431,32 @@ function pict(key: string, c: Ctx) {
       }
       break;
     case 'cold':
-      for (let i = 0; i < 3; i++) {
-        const a = (i / 3) * Math.PI + Math.PI / 2;
-        const dx = Math.cos(a) * 24, dy = Math.sin(a) * 24;
-        line(c, 32 - dx, 32 - dy, 32 + dx, 32 + dy, '#7fa8c9', 6);
-        line(c, 32 - dx, 32 - dy, 32 + dx, 32 + dy, '#dff0fb', 2.4);
-        for (const s of [-1, 1]) {
-          const ex = 32 + dx * 0.6 * s, ey = 32 + dy * 0.6 * s;
-          line(c, ex, ey, ex + Math.cos(a + 0.7 * s) * 7 * s, ey + Math.sin(a + 0.7 * s) * 7 * s, '#7fa8c9', 3);
-          line(c, ex, ey, ex + Math.cos(a - 0.7 * s) * 7 * s, ey + Math.sin(a - 0.7 * s) * 7 * s, '#7fa8c9', 3);
-        }
-      }
+      // A hard frost, not snow: a frost-rimmed leaf beside a thermometer reading low.
+      c.save();
+      c.translate(21, 55);
+      c.rotate(-0.42);
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.quadraticCurveTo(-15, -20, 0, -36);
+      c.quadraticCurveTo(18, -20, 0, 0);
+      c.fillStyle = '#a9bda5';
+      c.strokeStyle = '#ffffff';
+      c.lineWidth = 7;
+      c.stroke();
+      c.strokeStyle = '#506a50';
+      c.lineWidth = 2;
+      c.fill();
+      c.stroke();
+      for (const [x, y] of [[-7, -10], [-6, -21], [6, -14], [5, -25], [0, -31]]) circle(c, x, y, 1.3, '#ffffff');
+      c.restore();
+      roundRect(c, 36, 7, 13, 38, 6.5, '#fff6df', '#70949c');
+      roundRect(c, 40, 27, 5, 20, 2.5, '#99bdc4');
+      circle(c, 42.5, 50, 9.5, '#99bdc4');
+      c.strokeStyle = '#70949c';
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(42.5, 50, 9.5, 0, Math.PI * 2);
+      c.stroke();
       break;
     case 'spring':
       for (let i = 0; i < 5; i++) {

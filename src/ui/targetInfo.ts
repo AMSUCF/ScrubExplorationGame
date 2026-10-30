@@ -50,6 +50,6 @@ export function targetInfo(s: GameState, target: Target): { name: string; detail
     return { name, detail: `${e.hp > 1 ? `${e.hp} careful steps remaining. ` : ''}Clear this litter to make the scrub safer for wildlife.` };
   }
   if (e.kind === 'nativeAnimal') return { name, detail: 'Say hello, or take a portrait. A small, unhurried encounter can bring a little surprise.' };
-  if (e.species === 'iguana' && s.weather.kind === 'cold') return { name, detail: 'Stiff from the cold snap and easy to scoop up. A gentle rescue.' };
+  if (e.species === 'iguana' && s.weather.kind === 'cold') return { name, detail: 'Stiff from the frosty morning and easy to scoop up. A gentle rescue.' };
   return { name, detail: 'A gentle rescue: help this neighbor reach a safer home.' };
 }

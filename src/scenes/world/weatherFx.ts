@@ -1,5 +1,5 @@
 // Weather you can see: rain sheets that lean with the wind, blown leaves or petals, drifting fog,
-// storm gloom, frosty cold snaps, summer fireflies at dusk, and a gentle seasonal colour wash.
+// storm gloom, summer fireflies at dusk, and a gentle seasonal colour wash. (Hard frost is frostFx.ts.)
 import Phaser from 'phaser';
 import { WORLD_H, WORLD_W } from '../../config';
 import { tex, texScale } from '../../art/effects';
@@ -12,7 +12,7 @@ const WEATHER_TINT: Partial<Record<Weather['kind'], [number, number]>> = {
   storm: [0x2a3040, 0.24], hurricane: [0x232a38, 0.32], rain: [0x4a5a6a, 0.14], fog: [0xf4f4f0, 0.16], cold: [0xa8c8ee, 0.1], heat: [0xffb060, 0.07],
 };
 /** How far plants lean and rock, in degrees. */
-const SWAY: Record<Weather['kind'], number> = { clear: 0.5, breezy: 1.8, heat: 0.3, rain: 1, storm: 2.8, hurricane: 4.2, fog: 0.2, cold: 0.6 };
+const SWAY: Record<Weather['kind'], number> = { clear: 0.5, breezy: 1.8, heat: 0.3, rain: 1, storm: 2.8, hurricane: 4.2, fog: 0.2, cold: 0.15 };
 
 export class WeatherFx {
   readonly sway: number;
@@ -23,7 +23,6 @@ export class WeatherFx {
   private rain: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private drift: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private fireflies: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  private frost: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private fog: Phaser.GameObjects.Image[] = [];
   private puddles: Phaser.GameObjects.Image[] = [];
   private gloom: number;
@@ -94,22 +93,6 @@ export class WeatherFx {
         emitting: false,
       }).setDepth(199985);
     }
-
-    // A cold snap: frost crystals glint here and there, then melt away. They draw a little larger than
-    // their 10 px box so the thin six-point shape stays legible.
-    if (weather.kind === 'cold') {
-      const k = texScale(scene, 'frost');
-      this.frost = scene.add.particles(0, 0, tex(scene, 'frost'), {
-        emitZone: { type: 'random', source: this.driftZone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
-        speedX: { min: -3, max: 3 },
-        speedY: { min: 2, max: 8 },
-        rotate: { min: 0, max: 60 },
-        lifespan: 2600,
-        alpha: { values: [0, 0.85, 0.85, 0] } as unknown as Phaser.Types.GameObjects.Particles.EmitterOpOnEmitType,
-        scale: { min: 0.7 * k, max: 1.1 * k },
-        frequency: 140,
-      }).setDepth(199975);
-    }
   }
 
   /** Keep screen-wide layers sized to the camera and particles raining on the visible area. */
@@ -140,6 +123,6 @@ export class WeatherFx {
   }
 
   destroy(): void {
-    [this.seasonTint, this.weatherTint, this.rain, this.drift, this.fireflies, this.frost, ...this.fog, ...this.puddles].forEach((o) => o?.destroy());
+    [this.seasonTint, this.weatherTint, this.rain, this.drift, this.fireflies, ...this.fog, ...this.puddles].forEach((o) => o?.destroy());
   }
 }

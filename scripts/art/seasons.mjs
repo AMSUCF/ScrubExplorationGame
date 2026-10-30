@@ -11,7 +11,15 @@ const sun = e(32, 23, 10, 10, '#edcf8c', '#b69a64', 2) + Array.from({length:8}, 
 const cloud = p('M15 38C2 38 4 22 15 23C12 7 34 5 39 20C55 11 65 38 48 39Z', '#c4d8d7', ink, 2);
 const drop = (x,y) => p(`M${x} ${y}q-9 12 0 12q9 0 0-12Z`,blue,ink,1.5);
 const flame = p('M31 8C35 25 51 27 48 43C44 62 15 60 14 42C13 32 22 25 24 17Q25 33 29 32Q36 26 31 8Z','#e4a06c','#b67c57',2)+p('M31 31Q46 48 32 53Q18 49 31 31Z','#ffe4a4','none');
-const snow = Array.from({length:6},(_,i)=>g(line('M32 32V10M32 19L26 14M32 19L38 14',ink,2.5),`rotate(${i*60} 32 32)`)).join('');
+// Florida's rare hard frost is rime and glinting ice, never snow: a four-point glint, and a thermometer
+// reading low beside a frost-rimmed leaf.
+const star = (x,y,r,w) => `M${x} ${y-r}L${x+w} ${y-w}L${x+r} ${y}L${x+w} ${y+w}L${x} ${y+r}L${x-w} ${y+w}L${x-r} ${y}L${x-w} ${y-w}Z`;
+const glint = (x,y,r) => p(star(x,y,r,r*.13),'#ffffff','none')+g(p(star(x,y,r*.6,r*.1),'#eef7ff','none'),`rotate(45 ${x} ${y})`);
+const onLeaf = (body) => g(body,'translate(21 55) rotate(-24) scale(2.6)');
+const frosted = onLeaf(p('M0 0Q-6-8 0-14Q7-8 0 0Z','#ffffff','#ffffff',1.5))+leaf(21,55,2.6,-24,'#a9bda5')
+ +onLeaf([[-3,-4,.5],[-2.6,-8,.45],[-1.2,-11.4,.4],[2.6,-5.5,.5],[2.2,-9.6,.45],[.6,-12.6,.35],[-1,-6.5,.3],[1,-3,.35]].map(([x,y,r])=>e(x,y,r,r*.8,'#ffffff')).join(''))
+ +glint(10,22,5.5)+glint(27,13,3.5);
+const thermometer = r(36,7,13,38,6.5,cream,ink,2)+r(40,27,5,20,2.5,blue,'none')+e(42.5,50,9.5,9.5,blue,ink,2)+e(40,47,2.6,2.6,cream)+line('M49 15h-3.5M49 22h-3.5M49 29h-3.5',ink,1.6);
 const flower = Array.from({length:5},(_,i)=>g(e(32,22,8,11,'#e5b1af','#b88c8a',1.8),`rotate(${i*72} 32 32)`)).join('')+e(32,32,7,7,'#edcc88','#b79d6c',1.5);
 const rake = line('M45 10L23 43','#9d805e',5)+line('M11 38L35 51','#7e8e87',4)+[0,1,2,3,4].map(i=>line(`M${12+i*5} ${39+i*2.5}l-4 8`,'#7e8e87',2.5)).join('');
 const bottle = r(17,27,26,29,6,'#ce9a7d','#986f5c',2)+r(23,19,13,9,2,'#c4c9b5','#7b928b',2);
@@ -22,7 +30,7 @@ export const SEASON_ICONS = {
  storm: cloud+p('M33 34L23 47H32L28 59L45 41H35L40 34Z','#ecd18c','#b5a06e',1.5),
  hurricane: line('M46 14C15 1 1 38 24 49C45 59 65 35 50 22C35 9 18 22 25 35C31 44 46 39 43 30C40 23 33 27 34 32',ink,6),
  fog: line('M13 19H51M7 32H56M16 45H48','#afbfbc',6)+line('M17 17H46M12 30H51M20 43H44','#e9eddf',1.5),
- cold: snow,
+ cold: frosted+thermometer,
  spring: flower,
  summer: sun+line('M9 42Q17 35 25 42T41 42T57 42M9 53Q17 46 25 53T41 53T57 53',ink,3),
  fall: leaf(30,48,2,-35,'#c49b72')+e(44,43,9,11,'#c3a075','#94794f',2)+e(44,35,10,4,'#99825b','#796b4f',2)+line('M44 31l2-6','#796b4f',2),
@@ -41,7 +49,7 @@ export const SEASON_ICONS = {
 };
 
 // Ids must differ from svg()'s own (glass, water, glow, grain): a duplicate resolves to the first.
-const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="fireflyGlow"><stop stop-color="#fbffd8"/><stop offset=".25" stop-color="#e2f27e" stop-opacity=".9"/><stop offset="1" stop-color="#b4d65a" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
+const defs = `<defs><radialGradient id="soft"><stop stop-color="#fff7d2"/><stop offset=".22" stop-color="#ffd57b" stop-opacity=".9"/><stop offset="1" stop-color="#eeaa64" stop-opacity="0"/></radialGradient><radialGradient id="iceGlow"><stop stop-color="#ffffff" stop-opacity=".9"/><stop offset=".35" stop-color="#e6f3fb" stop-opacity=".5"/><stop offset="1" stop-color="#cfe5f4" stop-opacity="0"/></radialGradient><radialGradient id="fireflyGlow"><stop stop-color="#fbffd8"/><stop offset=".25" stop-color="#e2f27e" stop-opacity=".9"/><stop offset="1" stop-color="#b4d65a" stop-opacity="0"/></radialGradient><radialGradient id="mist"><stop stop-color="#faf9e9" stop-opacity=".25"/><stop offset="1" stop-color="#faf9e9" stop-opacity="0"/></radialGradient><radialGradient id="smoke"><stop stop-color="#c1becb" stop-opacity=".5"/><stop offset=".5" stop-color="#aaa4b5" stop-opacity=".35"/><stop offset="1" stop-color="#aaa4b5" stop-opacity="0"/></radialGradient><filter id="blur"><feGaussianBlur stdDeviation=".9"/></filter><linearGradient id="rain" x2="0" y2="1"><stop stop-color="#a7cad7" stop-opacity="0"/><stop offset=".85" stop-color="#c6e1e9" stop-opacity=".8"/><stop offset="1" stop-color="#f4f7e9" stop-opacity="0"/></linearGradient></defs>`;
 const makeFlecks = (seed) => {
  const rng = random(seed);
  return (n,w,h,colors,size=.4) => Array.from({length:n},()=>e(2+rng()*(w-4),2+rng()*(h-4),size*(.3+rng()),size*(.3+rng()),colors[Math.floor(rng()*colors.length)])).join('');
@@ -59,7 +67,7 @@ function effect(key, flecks) {
  case 'leaf_blown': return p('M1 5Q3-1 8 2Q12 6 4 7Z','#c49a70','#977752',.35)+line('M1 6L8 2','#efd0a1',.4);
  case 'petal': return p('M1 4C0-1 5 0 5 2Q6 5 3 5Z','#dfa5ad','none')+line('M2 2l1 2','#f5ccd0',.35);
  case 'seed_fluff': return Array.from({length:13},(_,i)=>line(`M3 4Q${i/3} 2 ${.4+i*.4} ${.5+Math.abs(i-6)*.15}`,'#f5efdc',.22)).join('')+p('M2.7 3.5Q4 4 3 5.7Q2 5 2.7 3.5Z','#a78760','none');
- case 'frost': return g(snow,'scale(.15625)');
+ case 'frost': return e(5,5,3.2,3.2,'url(#iceGlow)')+glint(5,5,4.7);
  case 'resprout': return e(13,20,11,2,'#74634b').replace('/>',' opacity=".22"/>')+p('M5 20L8 12L11 15L14 10L17 16L20 14L22 20Z','#62584b','#82745e',.5)+[0,1,2,3,4,5].map(i=>leaf(8+i*2,18,.45+(i%2)*.18,-50+i*20,'#9fbb6c')).join('');
  case 'scorch': return `<g filter="url(#blur)" opacity=".5">${p('M4 13Q1 7 12 7Q14 1 24 5Q31 2 34 9Q43 9 39 18Q43 24 30 24Q21 30 16 24Q4 27 6 21Q0 19 4 13Z','#7e7565','none')}</g>`+flecks(100,36,23,['#c8bd9e','#aaa38d','#655f53'],.55)+Array.from({length:9},(_,i)=>line(`M${7+i*3.7} 21l-1-3`,'#706854',.7)).join('')+e(17,18,.6,.3,'#e9ac66');
  case 'firebreak': return `<g filter="url(#blur)">${e(17,11,16,10,'#eddfba')}</g>`+[0,1,2,3,4].map(i=>line(`M5 ${5+i*3}Q16 ${3+i*3} 29 ${5+i*3}`,'#c9b88f',.8)).join('')+line('M5 18l3 2m18-17 3 1','#a38a63',.6)+flecks(40,32,21,['#dacba8','#f3e9cd'],.3);

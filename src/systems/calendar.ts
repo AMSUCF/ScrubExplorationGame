@@ -12,7 +12,7 @@ export const SEASON_NOTE: Record<Season, string> = {
   spring: 'Wildflowers open and the sand dries out. Fires spread easily.',
   summer: 'The wet season: afternoon storms, lightning, and fast-growing weeds.',
   fall: 'Acorns everywhere! Scrub oaks drop extra seeds. Watch for hurricanes.',
-  winter: 'Cool, dry and calm: good burn weather. Cold snaps slow the iguanas.',
+  winter: 'Cool, dry and calm: good burn weather. A rare frosty morning slows the iguanas.',
 };
 
 export interface CalendarDay {

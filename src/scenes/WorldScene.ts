@@ -24,6 +24,8 @@ import { hasPerk } from '../systems/progress';
 import { mulberry32 } from '../systems/rng';
 import { FireFx } from './world/fireFx';
 import { WeatherFx } from './world/weatherFx';
+import { FrostFx, Frosted } from './world/frostFx';
+import { frostThisWinter } from '../systems/weather';
 
 const S = 1 / ART_SCALE;
 const SIGHT_RANGE = 120;
@@ -48,6 +50,7 @@ export class WorldScene extends PlayScene {
   private duskHeard = -1;
   private habitatArt: Phaser.GameObjects.GameObject[] = [];
   private weatherFx!: WeatherFx;
+  private frostFx: FrostFx | null = null;
   private fireFx!: FireFx;
   private fireClock = 0;
   private nextStrike = 0;
@@ -98,11 +101,14 @@ export class WorldScene extends PlayScene {
     this.fireFx = new FireFx(this, this.state);
     this.syncEntities(true);
     this.weatherFx = new WeatherFx(this, this.state.weather, seasonOf(this.state.day));
+    this.frostFx = this.state.weather.kind === 'cold' ? new FrostFx(this, this.state) : null;
     this.fireArrow = this.add.image(0, 0, tex(this, 'ui_fire')).setDisplaySize(16, 16).setDepth(250001).setVisible(false);
     // Storm days bring a few lightning strikes, spread through the time spent outdoors.
     if (this.state.weather.strikes > 0) this.nextStrike = this.time.now + 9000 + Math.random() * 12000;
     this.events.once('shutdown', () => {
       this.weatherFx.destroy();
+      this.frostFx?.destroy();
+      this.frostFx = null;
       this.fireFx.destroy();
       audio.fire(0);
     });
@@ -232,6 +238,8 @@ export class WorldScene extends PlayScene {
 
   private syncEntities(initial = false): void {
     const alive = new Set<number>();
+    // After a frost, cogongrass blades stay reddish-tan until spring (its runners live on).
+    const frostBrowned = this.state.weather.kind === 'cold' || frostThisWinter(this.state.seed, this.state.day);
     for (const e of this.state.entities) {
       alive.add(e.id);
       let view = this.views.get(e.id);
@@ -243,6 +251,10 @@ export class WorldScene extends PlayScene {
           view.sprite.setScale(0);
           this.tweens.add({ targets: view.sprite, scaleX, scaleY, duration: 350, ease: 'Back.Out' });
         }
+      }
+      if (e.kind === 'invasivePlant' && e.species === 'cogon') {
+        if (frostBrowned) view.sprite.setTint(0xd9a982);
+        else view.sprite.clearTint();
       }
       if (e.kind === 'nativePlant') {
         const charred = e.burnedDay !== undefined && this.state.day - e.burnedDay < 1;
@@ -533,9 +545,20 @@ export class WorldScene extends PlayScene {
     audio.fire(Phaser.Math.Clamp(1 - near.d / 700, 0, 0.4) * Math.min(1, this.fireFx.count / 6));
   }
 
+  /** What frost settles on: every plant (trees only lightly, on their crowns) and the stations. */
+  private *frosted(): Iterable<Frosted> {
+    for (const e of this.state.entities) {
+      if (e.kind !== 'nativePlant' && e.kind !== 'invasivePlant') continue;
+      const sprite = this.views.get(e.id)?.sprite;
+      if (sprite) yield { sprite, weight: e.species === 'oak' || e.species === 'hickory' || e.species === 'pepper' ? 0.45 : 1 };
+    }
+    for (const sprite of this.stationSprites.values()) yield { sprite, weight: 0.9 };
+  }
+
   update(_time: number, delta: number): void {
     this.updatePlay(delta);
     this.weatherFx.update(delta, Phaser.Math.Clamp((0.5 - batteryFraction(this.state)) / 0.5, 0, 1));
+    this.frostFx?.update(batteryFraction(this.state), this.frosted());
     if (isOverlayOpen()) return;
     this.stepFire(delta);
     this.stepStorm();

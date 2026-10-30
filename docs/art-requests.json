@@ -333,9 +333,10 @@
       ],
       "transparent": true,
       "anchor": "centre",
-      "prompt": "A delicate pale-blue frost sparkle for a Florida cold snap: a six-point twinkle.",
+      "prompt": "Sunlight catching a hoarfrost crystal on a rare Florida frosty morning: a four-point ice glint with a soft pale-blue halo. It twinkles in place on frosted plants and ground; it never falls.",
       "mustShow": [],
       "avoid": [
+        "Snowflakes or six-fold symmetry",
         "Snowman or snowfall"
       ],
       "notes": ""
@@ -766,7 +767,7 @@
       ],
       "transparent": true,
       "anchor": "centre",
-      "prompt": "Cold snap: a frosty six-point snowflake. A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in icy blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
+      "prompt": "Frosty morning: a frost-rimmed leaf beside a thermometer reading low, never a snowflake (Florida frost is not snow). A chunky, rounded pictogram matching the existing ui_ set: soft pastel fill in icy blue, a darker outline of the same hue, small cream highlights, no text, transparent background.",
       "mustShow": [
         "Reads clearly at 24 px",
         "Same weight and padding as the existing ui_* icons"
@@ -774,7 +775,8 @@
       "avoid": [
         "Text",
         "Black outlines",
-        "Emoji style"
+        "Emoji style",
+        "Snowflakes"
       ],
       "notes": ""
     },

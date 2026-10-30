@@ -38,7 +38,8 @@ export const WEATHER: Record<WeatherKind, WeatherInfo> = {
   storm: { name: 'Thunderstorm', icon: ICON.storm, note: 'Lightning may spark a fire. Litter blows in overnight.', moisture: 0.85, rain: 0.85, burnOk: false, drain: 1 },
   hurricane: { name: 'Hurricane', icon: ICON.hurricane, note: 'Howling wind and rain. Expect lots of litter and seeds tomorrow.', moisture: 0.25, rain: 1, burnOk: false, drain: 1.15 },
   fog: { name: 'Foggy', icon: ICON.fog, note: 'Soft, damp air. Animals are easier to sneak up on.', moisture: 0.65, rain: 0, burnOk: true, drain: 1 },
-  cold: { name: 'Cold snap', icon: ICON.cold, note: 'Chilly iguanas go stiff and are easy to catch.', moisture: 0.85, rain: 0, burnOk: true, drain: 1.1 },
+  // Florida frost forms on calm, clear nights when the air is just above freezing, never as snow.
+  cold: { name: 'Frosty morning', icon: ICON.cold, note: 'A rare cold snap! Frost sparkles on low plants and lichens at dawn, then melts as the sun climbs. Chilly iguanas stay stiff and easy to catch.', moisture: 0.85, rain: 0, burnOk: true, drain: 1.1 },
 };
 
 const WEIGHTS: Record<Season, Partial<Record<WeatherKind, number>>> = {
@@ -68,9 +69,18 @@ export function rollWeather(seed: number, day: number): Weather {
   if (day <= 1) kind = 'clear';
   if (kind === 'hurricane' && rawKind(seed, day - 1).kind === 'hurricane') kind = 'storm';
   const angle = rng() * Math.PI * 2;
-  const base: Partial<Record<WeatherKind, number>> = { clear: 0.15, breezy: 0.6, heat: 0.2, rain: 0.3, storm: 0.7, hurricane: 1, fog: 0.05, cold: 0.25 };
+  // Frost needs a still night, so frosty mornings are calm.
+  const base: Partial<Record<WeatherKind, number>> = { clear: 0.15, breezy: 0.6, heat: 0.2, rain: 0.3, storm: 0.7, hurricane: 1, fog: 0.05, cold: 0.02 };
   const strikes = kind === 'storm' ? 2 + (rng() < 0.5 ? 1 : 0) : kind === 'hurricane' ? 1 : 0;
   return { kind, wind: { x: Math.cos(angle), y: Math.sin(angle) }, windSpeed: Math.min(1, (base[kind] ?? 0.2) + rng() * 0.15), strikes };
+}
+
+/** A frost has come this winter, up to and including `day`: frost-browned cogongrass stays tan until spring. */
+export function frostThisWinter(seed: number, day: number): boolean {
+  const c = calendar(day);
+  if (c.season !== 'winter') return false;
+  for (let d = day - c.dayOfSeason + 1; d <= day; d++) if (rollWeather(seed, d).kind === 'cold') return true;
+  return false;
 }
 
 export function weatherInfo(w: Weather): WeatherInfo {

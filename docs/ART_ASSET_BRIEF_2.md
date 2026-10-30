@@ -171,10 +171,10 @@ A tiny glowing yellow-green firefly light: a bright dot with a soft halo.
 
 ### `frost` · 10×10 logical · 40×40 px · anchor centre
 
-A delicate pale-blue frost sparkle for a Florida cold snap: a six-point twinkle.
+Sunlight catching a hoarfrost crystal on a rare Florida frosty morning: a four-point ice glint with a soft pale-blue halo. The game twinkles these in place on frosted plants and ground; they never fall.
 
 - **Avoid:**
-  - Snowman or snowfall.
+  - Snowflakes, six-fold symmetry, snowmen or snowfall (peninsular Florida frost is never snow).
 
 ## Storm litter
 
@@ -318,7 +318,7 @@ Match the existing `ui_*` pictograms (for example `ui_cut`, `ui_water`, `ui_came
 | `ui_storm` | Thunderstorm: a grey cloud with a yellow lightning bolt | slate and yellow |
 | `ui_hurricane` | Hurricane: a spiral swirl | storm blue |
 | `ui_fog` | Fog: three soft horizontal bands | misty grey |
-| `ui_cold` | Cold snap: a frosty six-point snowflake | icy blue |
+| `ui_cold` | Frosty morning: a frost-rimmed leaf beside a thermometer reading low (no snowflake) | icy blue |
 | `ui_spring` | Spring: a five-petal pink wildflower | pink and gold |
 | `ui_summer` | Summer wet season: a sun over gentle waves | sunny yellow and blue |
 | `ui_fall` | Fall: a small scrub-oak leaf and an acorn | russet and tan |
@@ -342,4 +342,4 @@ These would add polish; the code currently fakes them with tints and scaling:
 - `wildfire_1`, `wildfire_2`: two more flame frames on the `wildfire` canvas, for a hand-drawn flicker.
 - `<plant>_burnt` for `oak`, `hickory`, `palmetto`: the same canvas as each plant, burned back to a charred crown (shown the day after a fire).
 - `robot_spray`, `robot_rake`, `robot_camera`: the robot (36×36) holding a spray nozzle, a rake, or a camera, for the fire line, firebreaks and portraits.
-- `iguana_cold`: the green iguana (34×16 brief size) lying stiff and pale after a cold snap.
+- `iguana_cold`: the green iguana (34×16 brief size) lying stiff and pale on a frosty morning.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FIRE_OVERDUE_DAYS, FIRE_READY_DAYS, MAP_W } from '../src/config';
+import { FIRE_OVERDUE_DAYS, FIRE_READY_DAYS, MAP_W, SEASON_DAYS } from '../src/config';
 import { STATIONS } from '../src/data/map';
 import { getActions, performAction } from '../src/systems/actions';
 import { calendar, isSeasonStart } from '../src/systems/calendar';
@@ -12,7 +12,7 @@ import { edgeIncursions, edgeTiles, incursionPressure } from '../src/systems/inc
 import { mulberry32 } from '../src/systems/rng';
 import { migrate } from '../src/systems/save';
 import { GameState, HazardEntity, NativePlantEntity, addEntity, newGame } from '../src/systems/state';
-import { rollWeather, windFrom } from '../src/systems/weather';
+import { frostThisWinter, rollWeather, windFrom } from '../src/systems/weather';
 import { doVerb, emptyGame, find } from './helpers';
 
 /** Set every tile's burn history to `age` days ago. */
@@ -43,6 +43,27 @@ describe('seasons and weather', () => {
     expect(count(1, 'storm')).toBeGreaterThan(count(3, 'storm') + 40);
     expect(count(3, 'cold')).toBeGreaterThan(0);
     expect(count(1, 'cold')).toBe(0);
+  });
+
+  it('brings frosty mornings only on calm winter days, and remembers them until spring', () => {
+    let frosts = 0;
+    for (let seed = 0; seed < 40; seed++) {
+      for (let day = 2; day < 120; day++) {
+        const w = rollWeather(seed, day);
+        if (w.kind !== 'cold') continue;
+        frosts++;
+        expect(calendar(day).season).toBe('winter');
+        // Frost forms on still nights.
+        expect(w.windSpeed).toBeLessThan(0.2);
+        // Cogongrass stays frost-browned from the winter's first frost until spring.
+        const start = day - calendar(day).dayOfSeason + 1;
+        let first = start;
+        while (rollWeather(seed, first).kind !== 'cold') first++;
+        for (let d = start; d < start + SEASON_DAYS; d++) expect(frostThisWinter(seed, d)).toBe(d >= first);
+        expect(frostThisWinter(seed, start + SEASON_DAYS)).toBe(false);
+      }
+    }
+    expect(frosts).toBeGreaterThan(10);
   });
 
   it('never brings hurricanes two days running, and storms carry lightning', () => {

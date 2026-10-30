@@ -235,6 +235,24 @@ try {
     await page.waitForTimeout(300);
     await shot(`17-hud-${name}`);
   }
+
+  // A rare frosty morning: hoarfrost on plants and ground (never snow) that melts by mid-morning.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await world(`
+    w.state.day = 23; w.state.fires = [];
+    w.state.weather = { kind: 'cold', wind: { x: 0, y: 1 }, windSpeed: 0.02, strikes: 0 };
+    w.state.battery = w.state.batteryMax;
+    w.scene.restart({ state: w.state });`);
+  await page.waitForFunction(() => window.__game.scene.isActive('World') && window.__game.scene.getScene('World').frostFx);
+  await page.waitForTimeout(900);
+  const dawn = await world(`const f = w.frostFx; return { sheet: f.sheet?.alpha ?? 0, coats: f.coats.size, glints: f.glints.alive.length };`);
+  assert(dawn.sheet > 0.9 && dawn.coats > 10 && dawn.glints > 0, `frost at dawn: ${JSON.stringify(dawn)}`);
+  assert(await world(`return w.state.entities.filter((e) => e.species === 'cogon').every((e) => w.views.get(e.id)?.sprite.isTinted);`), 'cogongrass is frost-browned');
+  await shot('18-frost-dawn');
+  await world(`w.state.battery = w.state.batteryMax * 0.6;`);
+  await page.waitForTimeout(400);
+  const melted = await world(`const f = w.frostFx; return { gone: f.gone, coats: f.coats.size, sheet: w.textures.exists('frost_sheet') };`);
+  assert(melted.gone && melted.coats === 0 && !melted.sheet, `frost melts by mid-morning: ${JSON.stringify(melted)}`);
   assert.deepEqual(errors, []);
   console.log('SEASONS SMOKE OK — screenshots/seasons-*.png');
 } catch (e) {

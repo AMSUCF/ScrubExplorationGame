@@ -66,7 +66,7 @@ export const ICON = {
   storm: '⛈️',
   hurricane: '🌀',
   fog: '🌫️',
-  cold: '❄️',
+  cold: '🥶',
   spring: '🌸',
   summer: '🌴',
   fall: '🍂',
