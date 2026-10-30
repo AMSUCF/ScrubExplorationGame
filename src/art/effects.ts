@@ -441,7 +441,7 @@ function pict(key: string, c: Ctx) {
       c.quadraticCurveTo(18, -20, 0, 0);
       c.fillStyle = '#a9bda5';
       c.strokeStyle = '#ffffff';
-      c.lineWidth = 7;
+      c.lineWidth = 11;
       c.stroke();
       c.strokeStyle = '#506a50';
       c.lineWidth = 2;
@@ -450,7 +450,7 @@ function pict(key: string, c: Ctx) {
       for (const [x, y] of [[-7, -10], [-6, -21], [6, -14], [5, -25], [0, -31]]) circle(c, x, y, 1.3, '#ffffff');
       c.restore();
       roundRect(c, 36, 7, 13, 38, 6.5, '#fff6df', '#70949c');
-      roundRect(c, 40, 27, 5, 20, 2.5, '#99bdc4');
+      roundRect(c, 40, 35, 5, 12, 2.5, '#99bdc4');
       circle(c, 42.5, 50, 9.5, '#99bdc4');
       c.strokeStyle = '#70949c';
       c.lineWidth = 2;

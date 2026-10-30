@@ -16,10 +16,10 @@ const flame = p('M31 8C35 25 51 27 48 43C44 62 15 60 14 42C13 32 22 25 24 17Q25 
 const star = (x,y,r,w) => `M${x} ${y-r}L${x+w} ${y-w}L${x+r} ${y}L${x+w} ${y+w}L${x} ${y+r}L${x-w} ${y+w}L${x-r} ${y}L${x-w} ${y-w}Z`;
 const glint = (x,y,r) => p(star(x,y,r,r*.13),'#ffffff','none')+g(p(star(x,y,r*.6,r*.1),'#eef7ff','none'),`rotate(45 ${x} ${y})`);
 const onLeaf = (body) => g(body,'translate(21 55) rotate(-24) scale(2.6)');
-const frosted = onLeaf(p('M0 0Q-6-8 0-14Q7-8 0 0Z','#ffffff','#ffffff',1.5))+leaf(21,55,2.6,-24,'#a9bda5')
+const frosted = onLeaf(p('M0 0Q-6-8 0-14Q7-8 0 0Z','#ffffff','#ffffff',2.3))+leaf(21,55,2.6,-24,'#a9bda5')
  +onLeaf([[-3,-4,.5],[-2.6,-8,.45],[-1.2,-11.4,.4],[2.6,-5.5,.5],[2.2,-9.6,.45],[.6,-12.6,.35],[-1,-6.5,.3],[1,-3,.35]].map(([x,y,r])=>e(x,y,r,r*.8,'#ffffff')).join(''))
  +glint(10,22,5.5)+glint(27,13,3.5);
-const thermometer = r(36,7,13,38,6.5,cream,ink,2)+r(40,27,5,20,2.5,blue,'none')+e(42.5,50,9.5,9.5,blue,ink,2)+e(40,47,2.6,2.6,cream)+line('M49 15h-3.5M49 22h-3.5M49 29h-3.5',ink,1.6);
+const thermometer = r(36,7,13,38,6.5,cream,ink,2)+r(40,35,5,12,2.5,blue,'none')+e(42.5,50,9.5,9.5,blue,ink,2)+e(40,47,2.6,2.6,cream)+line('M49 15h-3.5M49 22h-3.5M49 29h-3.5',ink,1.6);
 const flower = Array.from({length:5},(_,i)=>g(e(32,22,8,11,'#e5b1af','#b88c8a',1.8),`rotate(${i*72} 32 32)`)).join('')+e(32,32,7,7,'#edcc88','#b79d6c',1.5);
 const rake = line('M45 10L23 43','#9d805e',5)+line('M11 38L35 51','#7e8e87',4)+[0,1,2,3,4].map(i=>line(`M${12+i*5} ${39+i*2.5}l-4 8`,'#7e8e87',2.5)).join('');
 const bottle = r(17,27,26,29,6,'#ce9a7d','#986f5c',2)+r(23,19,13,9,2,'#c4c9b5','#7b928b',2);

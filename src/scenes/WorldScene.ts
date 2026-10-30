@@ -24,7 +24,7 @@ import { hasPerk } from '../systems/progress';
 import { mulberry32 } from '../systems/rng';
 import { FireFx } from './world/fireFx';
 import { WeatherFx } from './world/weatherFx';
-import { FrostFx, Frosted } from './world/frostFx';
+import { FrostFx, Frosted, frostToday } from './world/frostFx';
 import { frostThisWinter } from '../systems/weather';
 
 const S = 1 / ART_SCALE;
@@ -101,7 +101,8 @@ export class WorldScene extends PlayScene {
     this.fireFx = new FireFx(this, this.state);
     this.syncEntities(true);
     this.weatherFx = new WeatherFx(this, this.state.weather, seasonOf(this.state.day));
-    this.frostFx = this.state.weather.kind === 'cold' ? new FrostFx(this, this.state) : null;
+    const frost = frostToday(this, this.state, batteryFraction(this.state));
+    this.frostFx = frost > 0 ? new FrostFx(this, this.state, frost) : null;
     this.fireArrow = this.add.image(0, 0, tex(this, 'ui_fire')).setDisplaySize(16, 16).setDepth(250001).setVisible(false);
     // Storm days bring a few lightning strikes, spread through the time spent outdoors.
     if (this.state.weather.strikes > 0) this.nextStrike = this.time.now + 9000 + Math.random() * 12000;
@@ -545,14 +546,22 @@ export class WorldScene extends PlayScene {
     audio.fire(Phaser.Math.Clamp(1 - near.d / 700, 0, 0.4) * Math.min(1, this.fireFx.count / 6));
   }
 
-  /** What frost settles on: every plant (trees only lightly, on their crowns) and the stations. */
+  /**
+   * What frost settles on: every plant (tree crowns, and vines climbing them, only lightly), thickets,
+   * old fences, and the stations (the pod lightly, so its lit doorway still glows).
+   */
   private *frosted(): Iterable<Frosted> {
     for (const e of this.state.entities) {
-      if (e.kind !== 'nativePlant' && e.kind !== 'invasivePlant') continue;
       const sprite = this.views.get(e.id)?.sprite;
-      if (sprite) yield { sprite, weight: e.species === 'oak' || e.species === 'hickory' || e.species === 'pepper' ? 0.45 : 1 };
+      if (!sprite) continue;
+      if (e.kind === 'nativePlant' || e.kind === 'invasivePlant') {
+        const crown = e.species === 'oak' || e.species === 'hickory' || e.species === 'pepper' || sprite.texture.key.endsWith('vine_root');
+        yield { sprite, weight: crown ? 0.45 : 1 };
+      } else if (e.kind === 'hazard' && (e.species === 'thicket' || e.species === 'fence')) {
+        yield { sprite, weight: e.species === 'thicket' ? 0.85 : 0.6 };
+      }
     }
-    for (const sprite of this.stationSprites.values()) yield { sprite, weight: 0.9 };
+    for (const [st, sprite] of this.stationSprites) yield { sprite, weight: st.kind === 'pod' ? 0.6 : 0.9 };
   }
 
   update(_time: number, delta: number): void {

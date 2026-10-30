@@ -245,14 +245,31 @@ try {
     w.scene.restart({ state: w.state });`);
   await page.waitForFunction(() => window.__game.scene.isActive('World') && window.__game.scene.getScene('World').frostFx);
   await page.waitForTimeout(900);
-  const dawn = await world(`const f = w.frostFx; return { sheet: f.sheet?.alpha ?? 0, coats: f.coats.size, glints: f.glints.alive.length };`);
-  assert(dawn.sheet > 0.9 && dawn.coats > 10 && dawn.glints > 0, `frost at dawn: ${JSON.stringify(dawn)}`);
+  const dawn = await world(`const f = w.frostFx; return { sheet: f.sheet?.alpha ?? 0, coats: f.coats.size };`);
+  assert(dawn.sheet > 0.9 && dawn.coats > 10, `frost at dawn: ${JSON.stringify(dawn)}`);
+  // Glints must keep twinkling at a real phone's 60 fps, not just at this browser's slow software frames.
+  const glints = await page.evaluate(() => {
+    const g = window.__game, w = g.scene.getScene('World'), e = w.frostFx.glints, emit = e.emitParticle;
+    let n = 0;
+    e.emitParticle = function (...a) { n++; return emit.apply(this, a); };
+    g.loop.sleep();
+    let t = g.loop.time;
+    for (let i = 0; i < 60; i++) w.sys.step(t += 1000 / 60, 1000 / 60);
+    g.loop.wake();
+    e.emitParticle = emit;
+    return n;
+  });
+  assert(glints >= 10, `ice glints at 60 fps: ${glints} in 1 s`);
   assert(await world(`return w.state.entities.filter((e) => e.species === 'cogon').every((e) => w.views.get(e.id)?.sprite.isTinted);`), 'cogongrass is frost-browned');
   await shot('18-frost-dawn');
   await world(`w.state.battery = w.state.batteryMax * 0.6;`);
   await page.waitForTimeout(400);
   const melted = await world(`const f = w.frostFx; return { gone: f.gone, coats: f.coats.size, sheet: w.textures.exists('frost_sheet') };`);
   assert(melted.gone && melted.coats === 0 && !melted.sheet, `frost melts by mid-morning: ${JSON.stringify(melted)}`);
+  // Once melted, it doesn't come back (or get painted again) when the robot pops home and returns.
+  await world(`w.scene.restart({ state: w.state });`);
+  await page.waitForFunction(() => window.__game.scene.isActive('World') && window.__game.scene.getScene('World').weatherFx);
+  assert(await world(`return w.frostFx === null && !w.textures.exists('frost_sheet');`), 'melted frost stays melted');
   assert.deepEqual(errors, []);
   console.log('SEASONS SMOKE OK — screenshots/seasons-*.png');
 } catch (e) {
