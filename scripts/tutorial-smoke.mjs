@@ -118,13 +118,20 @@ function drive(page) {
     }
     await verb(v);
   };
-  /** Wait for the robot to finish: done walking over, and done with the action (slow headless frames). */
-  const idle = () =>
-    page.waitForFunction(() => {
+  /**
+   * Wait for the robot to finish (done walking over, and done with the action), then let a few frames
+   * pass so the coach notices: it moves past finished steps on its next update, and a loop that asks
+   * "still on this step?" before then would act on the next step's target.
+   */
+  const idle = async () => {
+    await page.waitForFunction(() => {
       const g = window.__game, k = ['World', 'Home'].find((k) => g.scene.isActive(k));
       const w = k && g.scene.getScene(k);
       return w && !w.busy && !w.robot.busy;
     }, null, { timeout: 25000 });
+    const start = await page.evaluate(() => window.__game.loop.frame);
+    await page.waitForFunction((s) => window.__game.loop.frame >= s + 6, start, { timeout: 20000 });
+  };
   const coachTitle = () => page.locator('.coach:not([hidden]) .coach-title').textContent({ timeout: 8000 });
   const glowing = (sel) => page.waitForFunction((s) => document.querySelector(s)?.classList.contains('tut-glow'), sel, { timeout: 8000 });
   const shot = (name) => page.screenshot({ path: `screenshots/${name}.png` });
@@ -346,7 +353,7 @@ try {
       continue;
     }
     await t.verb('plant');
-    await page.waitForTimeout(600);
+    await t.idle();
   }
   await t.waitStep('finale');
   await page.waitForTimeout(1500);
