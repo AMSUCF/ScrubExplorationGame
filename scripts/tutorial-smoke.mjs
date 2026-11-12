@@ -9,6 +9,8 @@ import { preview } from 'vite';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const PORT = 4177;
+/** `--layouts-only` runs just the landscape and small-phone checks (quick, for layout work). */
+const LAYOUTS_ONLY = process.argv.includes('--layouts-only');
 const URL = `http://localhost:${PORT}/?debug`;
 mkdirSync('screenshots', { recursive: true });
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'warn' });
@@ -158,7 +160,8 @@ async function newPage(viewport, { touch = true, scale = 2 } = {}) {
       if (log[log.length - 1]?.endsWith(now)) return;
       log.push(`${((Date.now() - t0) / 1000).toFixed(1)}s tray ${now}`);
       if (log.length > 30) log.shift();
-    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+      // The document itself (not documentElement, which doesn't exist yet when init scripts run).
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
   });
   // New stewardship levels arrive mid-tutorial (the camera at level 2); accept them as a player would.
   await page.addLocatorHandler(page.locator('.overlay.levelup.in'), async () => {
@@ -169,6 +172,7 @@ async function newPage(viewport, { touch = true, scale = 2 } = {}) {
 
 let page;
 try {
+  if (!LAYOUTS_ONLY) {
   // --- The whole tutorial on a phone -------------------------------------------------------
   page = await newPage({ width: 390, height: 844 });
   const t = drive(page);
@@ -418,6 +422,7 @@ try {
   await d.shot('tutorial-desktop-without');
   await desk.context().close();
 
+  }
   // --- Landscape phone and a small phone: the coach fits around the HUD and tray --------------
   for (const [name, viewport] of [['landscape', { width: 844, height: 390 }], ['small-phone', { width: 320, height: 568 }]]) {
     const p = await newPage(viewport);
