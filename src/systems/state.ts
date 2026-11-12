@@ -1,6 +1,6 @@
 // The whole game is one plain, JSON-serialisable state object. Systems mutate it; scenes render it.
 import { BATTERY_START, CHOKE_RADIUS, MAP_H, MAP_W, TILE, TRAY_COUNT, WATER_TANK } from '../config';
-import { BASE_CENTER, ROBOT_SPAWN, ZoneId, inBounds, isStationTile, tileCenter, zoneAt } from '../data/map';
+import { FIRST_BOTTLE, FIRST_RESCUE, ROBOT_SPAWN, VINE_OAK, VINE_ROOT, ZoneId, inBounds, isStationTile, tileCenter, zoneAt } from '../data/map';
 import {
   GuestId,
   HAZARDS,
@@ -16,7 +16,8 @@ import { FireCell, Firebreak, FireReport, Sprout, emptyFireReport, initialBurnDa
 import { Rng, mulberry32, pick, randInt } from './rng';
 import { planTasks, type DailyTask } from './tasks';
 import type { VineCareProgress } from './vineCare';
-import { Weather, rollWeather } from './weather';
+import { Weather, WeatherKind, rollWeather } from './weather';
+import type { TutorialState } from './tutorial';
 
 export const STATE_VERSION = 3;
 
@@ -204,6 +205,8 @@ export interface GameState {
   /** Burrow neighbors met through the scope. */
   guests: GuestId[];
   bagItems: BagItem[];
+  /** The guided first days, when the player chose them (optional: older saves and tutorial-free games have none). */
+  tutorial?: TutorialState;
 }
 
 export const NATIVE_PLANTS: NativePlantId[] = ['palmetto', 'rosemary', 'oak', 'hickory'];
@@ -316,7 +319,25 @@ function chokeAround(state: GameState, rng: Rng, tx: number, ty: number, species
   }
 }
 
-export function newGame(seed = Date.now() & 0xffffffff): GameState {
+/** Weather that keeps a tutorial's first mornings calm: no lightning fires or hot, draining days. */
+const GENTLE: WeatherKind[] = ['clear', 'breezy', 'rain', 'fog'];
+
+/** The nearest seed (from `seed`) whose days 2 and 3 are gentle, so the guided days aren't interrupted by storms. */
+export function gentleSeed(seed: number): number {
+  for (let i = 0; i < 500; i++) {
+    const s = (seed + i * 7919) | 0;
+    if (GENTLE.includes(rollWeather(s, 2).kind) && GENTLE.includes(rollWeather(s, 3).kind)) return s;
+  }
+  return seed;
+}
+
+export interface NewGameOptions {
+  /** Start with the guided tutorial. */
+  tutorial?: boolean;
+}
+
+export function newGame(seed = Date.now() & 0xffffffff, opts: NewGameOptions = {}): GameState {
+  if (opts.tutorial) seed = gentleSeed(seed);
   const rng = mulberry32(seed);
   const state: GameState = {
     version: STATE_VERSION,
@@ -371,8 +392,10 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
     bagItems: [],
   };
 
-  // A tiny tutorial cluster just outside base: a choked rosemary, some cogon, a bottle.
-  const tut = { tx: BASE_CENTER.tx - 2, ty: BASE_CENTER.ty - 7 };
+  if (opts.tutorial) state.tutorial = { step: 0, did: {} };
+
+  // A tiny first-rescue cluster just outside base: a choked rosemary, some cogon, a bottle.
+  const tut = FIRST_RESCUE;
   addEntity<NativePlantEntity>(state, {
     kind: 'nativePlant',
     species: 'rosemary',
@@ -385,11 +408,11 @@ export function newGame(seed = Date.now() & 0xffffffff): GameState {
   });
   placeInvasive(state, 'cogon', tut.tx + 1, tut.ty);
   placeInvasive(state, 'cogon', tut.tx, tut.ty + 1);
-  addEntity<HazardEntity>(state, { kind: 'hazard', species: 'bottle', tx: tut.tx + 3, ty: tut.ty - 1, hp: 1 });
+  addEntity<HazardEntity>(state, { kind: 'hazard', species: 'bottle', ...FIRST_BOTTLE, hp: 1 });
 
   // A reachable rescue grove teaches canopy scale and the relationship between host and vine.
-  addEntity<NativePlantEntity>(state, { kind: 'nativePlant', species: 'oak', tx: 30, ty: 27, planted: false, plantedDay: 0, lastSeedDay: 0, rescued: false });
-  placeInvasive(state, 'airpotato', 31, 28);
+  addEntity<NativePlantEntity>(state, { kind: 'nativePlant', species: 'oak', ...VINE_OAK, planted: false, plantedDay: 0, lastSeedDay: 0, rescued: false });
+  placeInvasive(state, 'airpotato', VINE_ROOT.tx, VINE_ROOT.ty);
   addEntity<NativePlantEntity>(state, { kind: 'nativePlant', species: 'palmetto', tx: 33, ty: 28, planted: false, plantedDay: 0, lastSeedDay: 0, rescued: false });
   placeInvasive(state, 'pepper', 34, 27);
 

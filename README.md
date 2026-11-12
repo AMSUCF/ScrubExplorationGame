@@ -10,6 +10,13 @@ Inspired by Animal Crossing, cozy games, and *The Wild Robot*. The art pairs a s
 
 Pictures, little robot reactions, and short readable labels work together. The field guide holds the natural-history facts; tools, nursery jars, and wildlife needs explain what to do next.
 
+### Starting out: with or without the tutorial
+
+Each new game (from the title, or ⏸ → **Start fresh**) asks how you'd like to begin:
+
+- **Show me around** starts the guided tutorial. A coach card under the HUD walks you through your first three days in five short chapters: rolling around, scanning and pulling invasives to rescue a rosemary, gathering seeds, tidying litter, freeing a vine-smothered oak, recycling, sowing and watering in the nursery, the wildlife monitor, sleeping, daily goals, relocating an invasive animal, the field guide, and potting up and planting your first seedling. A tapping hand points at the next thing to tap (or an arrow at the screen edge, if it's out of view), and the button to press glows. Steps finish as you do them, in any order, and the coach sends you outdoors or home when a step happens elsewhere. If lightning starts a fire, the tutorial waits while you decide. Its first mornings are always calm, with no storms or heat. Tuck the coach away with ⌃, skip it any time, or turn it back on from ⏸ → **Tutorial**. Finishing earns 3 parts for the workshop.
+- **I know the way** jumps straight in, with the usual gentle hints line and the first-day pointer.
+
 - **Tap the ground** (or click it) to drive there. Hold and drag to steer.
 - **Tap anything** to open a labelled action tray. The robot drives over and does the work. Pepper has three visible stems to cut; lifting weeds takes a short, deliberate effort.
 - **Untangle climbing vines:** swipe across gold snip marks without touching the protected native branches, drag all three bulbils into the bag, then pull the freed vine downward. Leave and resume whenever you like. Keyboard users can Tab to a mark and press Enter.
@@ -81,9 +88,10 @@ npm run art:build  # rebuilds production PNGs from retained illustration and vec
 npm run art:check  # checks brief coverage, 4× sizes, transparency, fonts, and splash
 npm run restoration:smoke # after build: touch vine care, pause/reload, keyboard care, nursery and monitor
 npm run seasons:smoke     # after build: storms, lightning fire, fire line, portrait, dig, burrow scope, sorting, goals, morning card, fire map; phone, small phone and landscape
+npm run tutorial:smoke    # after build: plays the whole tutorial with real taps on a phone, then desktop, landscape and small-phone layouts, tuck/skip/resume, reload and Start fresh
 ```
 
-Add `?debug` to the URL to expose `window.__game` (and `window.__systems`: fire, progress and night-tick helpers) for poking around in the console.
+Add `?debug` to the URL to expose `window.__game` (and `window.__systems`: fire, progress, tutorial and night-tick helpers) for poking around in the console.
 
 ## Deploy
 
@@ -98,11 +106,11 @@ One-time setup: go to **Settings → Pages → Source** and choose **GitHub Acti
 | Path | What lives there |
 | --- | --- |
 | `src/data/` | Species facts and stats, the map/zones, the home layouts, the action icons, and the colour palette. This is the content to edit. |
-| `src/systems/` | Pure game logic with no Phaser dependency: state, actions, battery, nursery, habitat, populations, home upgrades, pathfinding, calendar, weather, fire, edge arrivals, levels and goals, night tick, and saving (with migration). `minigames/` holds the rules of each close-up activity. Fully unit-tested. |
+| `src/systems/` | Pure game logic with no Phaser dependency: state, actions, battery, nursery, habitat, populations, home upgrades, pathfinding, calendar, weather, fire, edge arrivals, levels and goals, the tutorial's steps (`tutorial.ts`), night tick, and saving (with migration). `minigames/` holds the rules of each close-up activity. Fully unit-tested. |
 | `src/art/` | Texture assembly, fallback art, feathered habitat surfaces and the delivered-asset catalog. `effects.ts` draws the placeholders for weather, fire, new litter, burrow neighbors, backdrops and pictograms. `src/data/visuals.ts` defines ecological world proportions, tree growth, and vine attachment. |
-| `src/scenes/` | Phaser scenes: `Boot`, `Intro` (the pod drop), `World` (the scrub), and `Home` (the pod interior). Both play scenes extend `PlayScene` (tap-to-go, radial menus, mini-games, and feedback). `world/` holds the weather and fire effects. |
+| `src/scenes/` | Phaser scenes: `Boot`, `Intro` (the pod drop), `World` (the scrub), and `Home` (the pod interior). Both play scenes extend `PlayScene` (tap-to-go, radial menus, mini-games, feedback, and the tutorial's hand, drawn by `tutorialPointer.ts`). `world/` holds the weather and fire effects. |
 | `src/entities/` | The robot (path following, antennas, emotes) and critter wander AI. |
-| `src/ui/` | Labelled action tray, HUD, touch/keyboard vine-care encounter, nursery dashboard, guide, morning summary, wildlife monitor, level-up card, and `minigames/` (fire line, portrait, rhizome dig, burrow scope, sorting). |
+| `src/ui/` | Labelled action tray, HUD, the tutorial coach (`coach.ts`) and begin card, touch/keyboard vine-care encounter, nursery dashboard, guide, morning summary, wildlife monitor, level-up card, and `minigames/` (fire line, portrait, rhizome dig, burrow scope, sorting). |
 | `src/audio/` | Web Audio synth, sound effects, robot and animal voices, the generative music and the ambience. |
 | `public/art/` | Drop-in folder for finished illustrations (listed in `manifest.json`); each replaces the placeholder with the same key. |
 | `docs/DESIGN.md` | The game design doc. |

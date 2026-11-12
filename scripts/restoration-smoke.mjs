@@ -40,6 +40,7 @@ try {
   const work = () => page.evaluate(() => window.__game.scene.getScene('World').state.entities.find(e => e.kind === 'invasivePlant' && e.tx === 31 && e.ty === 28)?.care);
   await page.goto('http://localhost:4176/?debug');
   await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('World'));
   await page.waitForTimeout(500);

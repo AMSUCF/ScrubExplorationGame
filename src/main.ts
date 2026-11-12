@@ -3,6 +3,7 @@ import './style.css';
 import './refinement.css';
 import './minigames.css';
 import './seasons.css';
+import './tutorial.css';
 import { audio } from './audio';
 import { BootScene } from './scenes/BootScene';
 import { HomeScene } from './scenes/HomeScene';
@@ -10,11 +11,13 @@ import { IntroScene } from './scenes/IntroScene';
 import type { PlayScene } from './scenes/PlayScene';
 import { WorldScene } from './scenes/WorldScene';
 import { services } from './services';
+import { Coach } from './ui/coach';
 import { Hud } from './ui/hud';
 import { initKeyboard } from './ui/input';
 import * as fire from './systems/fire';
 import * as progress from './systems/progress';
 import { nightTick } from './systems/dayCycle';
+import * as tutorial from './systems/tutorial';
 
 // Render at the device pixel ratio so the art stays crisp on phones. @3x phones (most iPhones) get their
 // full resolution, since a 2x canvas stretched 1.5x by the browser looks soft. Devices that report under
@@ -54,8 +57,10 @@ const active = (): PlayScene | null =>
 services.hud = new Hud(document.getElementById('ui')!, {
   onGuide: () => void active()?.openGuide(),
   onMenu: () => void active()?.openPause(),
+  onTasks: () => active()?.tutorialMoment('tasks'),
 });
 services.hud.setVisible(false);
+services.coach = new Coach(services.hud.root);
 initKeyboard();
 
 const resize = () => {
@@ -72,7 +77,7 @@ for (const ev of ['pointerdown', 'keydown', 'touchend'] as const) window.addEven
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault());
 
-// `?debug` exposes the game for automated smoke tests and console poking.
+// `?debug` exposes the game for automated smoke tests and console poking (fire, progress and tutorial helpers too).
 if (new URLSearchParams(location.search).has('debug')) {
-  Object.assign(window, { __game: game, __audio: audio, __systems: { ...fire, ...progress, nightTick } });
+  Object.assign(window, { __game: game, __audio: audio, __systems: { ...fire, ...progress, ...tutorial, nightTick } });
 }

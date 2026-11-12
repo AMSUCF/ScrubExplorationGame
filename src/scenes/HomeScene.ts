@@ -17,6 +17,7 @@ import { NATIVE_ANIMALS } from '../systems/population';
 import { GameState } from '../systems/state';
 import { isOverlayOpen, showLevelUp, showMonitor, showMorning } from '../ui/overlays';
 import { showNursery } from '../ui/nursery';
+import { noteTutorial } from '../systems/tutorial';
 import { services } from '../services';
 import { Interactable, PlayScene } from './PlayScene';
 
@@ -81,24 +82,43 @@ export class HomeScene extends PlayScene {
 
     this.setupPlay();
     this.addHomeNavigation();
+    // The nav exists now, so frame the room around it; and again whenever the coach changes size or moves.
+    this.applyZoom();
+    const unlisten = services.coach?.onLayout(() => this.applyZoom(true));
+    this.events.once('shutdown', () => unlisten?.());
     audio.music('home');
     audio.ambient('home');
     this.saveNow();
   }
 
-  private applyZoom = (): void => {
+  /**
+   * Frame the whole room in the band between the HUD (and the tutorial coach, when it sits under the
+   * HUD) and the home navigation. `glide` eases there instead of jumping, for coach size changes.
+   */
+  private applyZoom = (glide: unknown = false): void => {
     const dpr = (this.registry.get('dpr') as number) ?? 1;
     const { w, h } = this.size;
     const vw = this.scale.width / dpr;
-    const vh = this.scale.height / dpr - 185; // room for readable HUD and home navigation
+    const vh = this.scale.height / dpr;
+    const top = Math.max(100, services.hud?.topStack() ?? 0) + 8;
+    const nav = document.querySelector<HTMLElement>('.home-nav')?.getBoundingClientRect();
+    const bottom = Math.min(vh - 76, nav && nav.height ? nav.top : vh - 85) - 8;
+    const band = Math.max(80, bottom - top);
     const fitW = vw / (w * T + 24);
-    const fitH = vh / (h * T + 24);
+    const fitH = band / (h * T + 24);
     // A stable whole-room overview; large, touch-friendly detail views live in the home toolbar.
     const zoom = Phaser.Math.Clamp(Math.min(fitW, fitH), 0.35, 2.6);
     const cam = this.cameras.main;
-    cam.setZoom(zoom * dpr);
     cam.stopFollow(); cam.removeBounds();
-    cam.centerOn((w * T) / 2, (h * T) / 2 - 20 / zoom);
+    // Centre the room in the band rather than on the screen.
+    const x = (w * T) / 2, y = (h * T) / 2 - (top + band / 2 - vh / 2) / zoom;
+    if (glide === true) {
+      cam.zoomTo(zoom * dpr, 350, 'Sine.easeInOut', true);
+      cam.pan(x, y, 350, 'Sine.easeInOut', true);
+      return;
+    }
+    cam.setZoom(zoom * dpr);
+    cam.centerOn(x, y);
   };
 
   private addHomeNavigation(): void {
@@ -108,8 +128,9 @@ export class HomeScene extends PlayScene {
       const action = (e.target as Element).closest<HTMLElement>('[data-home]')?.dataset.home;
       if (!action || this.busy || isOverlayOpen()) return;
       this.closeMenu(); this.robot.stop();
-      if (action === 'wildlife') { await showMonitor(this.state); return; }
+      if (action === 'wildlife') { this.tutorialMoment('monitor'); await showMonitor(this.state); return; }
       if (action === 'nursery') {
+        this.tutorialMoment('nursery');
         await showNursery(this.state, async a => {
           const it = this.interactables().find(it => it.target.type === 'home' && a.target.type === 'home' && it.target.item.kind === 'slot' && it.target.item.index === a.target.item.index);
           if (it) await this.perform(a, it);
@@ -299,6 +320,7 @@ export class HomeScene extends PlayScene {
       });
     });
     const summary = nightTick(this.state);
+    noteTutorial(this.state, 'night');
     this.robot.setPosition(cradle.x * T, (cradle.y + 0.7) * T);
     this.buildFurniture();
     this.saveNow();

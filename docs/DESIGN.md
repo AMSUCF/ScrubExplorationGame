@@ -22,7 +22,7 @@ A small, round robot drops by pod into a neglected patch of Florida scrub to be 
 
 ## Controls
 - **Tap or click the ground** to drive there (A* pathfinding). Hold and drag to steer directly.
-- **Tap or click a thing** to open a radial ring of icon actions. Each button shows its battery or parts cost. A disabled button has a small badge showing why: 🔋 low battery, 🎒 bag full, 🥀 choked, ⏳ growing, ✔️ done for today, 🔒 plus the species that unlocks it. Picking an action drives the robot over and does it. The ring stays open for repeat taps.
+- **Tap or click a thing** to open a radial ring of icon actions. Small things (an anole, a can) get a finger-sized touch target, and a tap on something the robot is standing beside opens that thing, not the robot. Each button shows its battery or parts cost. A disabled button has a small badge showing why: 🔋 low battery, 🎒 bag full, 🥀 choked, ⏳ growing, ✔️ done for today, 🔒 plus the species that unlocks it. Picking an action drives the robot over and does it. The ring stays open for repeat taps.
 - **Tap the robot** for its own menu: plant a seedling on the tile ahead, or go home.
 - **Desktop extras:** hover highlights, WASD/arrows, Space/E to open the nearest ring, 1–9 to pick, Esc, and G for the guide.
 
@@ -103,6 +103,27 @@ A wordless intro (skippable with ⏭):
 4. The camera glances at a smothered plant 🥀 nearby.
 5. The robot perks up ❗💗, and morning begins.
 
+## Tutorial (optional)
+Every new game, whether from the title or ⏸ → Start fresh, asks **How would you like to begin?**
+- **Show me around**: the guided tutorial below.
+- **I know the way**: straight in, with the original gentle hints line and the first-day pointer. Back returns to the title (or the game) without starting anything.
+
+The tutorial follows the real first-rescue layout by the pod and teaches the whole daily rhythm over the first three days. It is a coach, not a script:
+- **The coach card** sits under the HUD: the robot, the chapter, the step (`3/20`), a short goal and one or two sentences of how. Each finished step gets a quick cheer and chime. It can be tucked into a slim pill (⌃), skipped (two taps), and turned back on from ⏸ → Tutorial. It steps back behind cards and close-ups, keeping its space so nothing jumps.
+- **Pointing**: a tapping hand with ripples sits on the next thing to tap. Off screen, or under the HUD, a badge at the view's edge points the way. The button to press glows gold with a tapping finger: HUD buttons, the pod's navigation, the jar's button in the nursery, and the action tray's button.
+- **Progress**: steps finish on what the player has actually done, judged from the game state or from moments the scenes report. They can be done in any order, and a step that is already done is passed at once. Nothing is locked, so free play always works.
+- **Adapting**: the coach sends the robot outdoors or home first when a step happens elsewhere, counts down the invaders left, asks to empty a full bag before the vine, names the nearest invasive animal, points at open sand beyond the clearing for planting, warns about low energy, and waits while a fire burns.
+- **Calm days**: a tutorial game picks its seed so that days 2 and 3 are clear, breezy, rainy or foggy, never stormy or hot. (Day 1 is always clear.)
+- **The end**: the last card thanks the player with 3 parts for the workshop. The tutorial's progress is part of the save, so Continue picks it up mid-way.
+
+| Chapter | Steps |
+| --- | --- |
+| First steps (day 1) | Roll around · Scan the white-plumed cogon · Pull every invader crowding the first rosemary |
+| Rescue and gather | Collect the rosemary's seeds · Pick up the bottle · Free the vine-covered oak (vine care) · Recycle the bag |
+| Home sweet pod | Go inside · Sow a seed and water it · Open the wildlife monitor · Sleep |
+| A new morning (day 2) | Open Today's goals · Water again · Capture an invasive animal · Drop it at the pad · Open the field guide · Sleep again |
+| Grow it back (day 3) | Pot up the seedling · Plant it on open sand · "The scrub is yours" |
+
 ## Look of the weather
 Seasons tint the light (spring blush, summer gold, fall amber, winter blue) and fill the wind with petals, cogon fluff or oak leaves. Rain leans with the wind and leaves puddles; storms darken the sky and flash with lightning; fog drifts in banks; on a rare frosty morning (never snow, this is Florida) hoarfrost silvers low plants, lichens and the pod roof, ice glints catch the low sun, and the frost melts from sunlit ground first, lingering in each shrub's shade until mid-morning, with a few wisps of steam; summer and spring dusks bring fireflies. Grass and shrubs sway with the wind. Fires flicker with a ground glow, drift smoke downwind, and leave scorched earth that fades over about 12 days, while burned natives show green resprouts. A little flame at the screen edge points to off-screen fires.
 
@@ -132,7 +153,8 @@ Seasons tint the light (spring blush, summer gold, fall amber, winter blue) and 
 - Game logic is pure TS in `src/systems` and unit-tested, including a scripted full playthrough.
 - The HUD, radial menu and cards are DOM, so they stay crisp and accessible (aria labels on icon buttons).
 - Rendering is at device pixel ratio (capped at 3×, or 2× on devices reporting under 4 GB of memory); the world ground is painted at 2×.
-- Saves go to localStorage and are versioned with migrations (v1 → v2 adds the home, populations and collections; v2 → v3 adds weather, per-tile burn history, fires, the seedbank, levels, goals, portraits, burrow guests and bag contents, crediting earlier progress as care points).
+- Saves go to localStorage and are versioned with migrations (v1 → v2 adds the home, populations and collections; v2 → v3 adds weather, per-tile burn history, fires, the seedbank, levels, goals, portraits, burrow guests and bag contents, crediting earlier progress as care points). The tutorial's progress is an optional field, so older saves and tutorial-free games simply have none.
+- The tutorial's steps are pure logic in `src/systems/tutorial.ts`, unit-tested by following every tip to the end; `npm run tutorial:smoke` plays it with real taps.
 
 ## Next up
 - Optional art polish from [ART_ASSET_BRIEF_2.md](ART_ASSET_BRIEF_2.md): extra wildfire frames, burnt plants and robot tool poses.

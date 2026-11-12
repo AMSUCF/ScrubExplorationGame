@@ -73,6 +73,13 @@ export const POD = STATIONS[0];
 
 export const ROBOT_SPAWN = tileCenter(BASE_CENTER.tx, BASE_CENTER.ty);
 
+/** The hand-placed first rescue just north of home: a choked rosemary, two cogon clumps and a bottle. */
+export const FIRST_RESCUE = { tx: BASE_CENTER.tx - 2, ty: BASE_CENTER.ty - 7 };
+export const FIRST_BOTTLE = { tx: FIRST_RESCUE.tx + 3, ty: FIRST_RESCUE.ty - 1 };
+/** A reachable rescue grove: an oak smothered by an air potato vine rooted beside it. */
+export const VINE_OAK = { tx: 30, ty: 27 };
+export const VINE_ROOT = { tx: 31, ty: 28 };
+
 export function stationTiles(s: Station): { tx: number; ty: number }[] {
   const out: { tx: number; ty: number }[] = [];
   const x0 = s.tx - Math.floor(s.w / 2);

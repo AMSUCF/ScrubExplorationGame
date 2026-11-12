@@ -18,7 +18,7 @@ export function showNursery(state: GameState, apply: (action: Action) => Promise
         const stage = trayStage(tray), planted = !!tray.seed;
         const item = homeLayout(state.homeLevel, state.trays.length, state.vases.length).find(it => it.kind === 'slot' && it.index === index)!;
         const options = getActions(state, { type: 'home', item });
-        const buttons = options.map(a => { const n = actions.push(a) - 1; return `<button data-action="${n}" ${a.enabled ? '' : 'disabled'} aria-label="${a.label} in jar ${index + 1}">${a.icon} ${a.label}${a.cost ? ` · ${a.cost} energy` : ''}</button>`; }).join('');
+        const buttons = options.map(a => { const n = actions.push(a) - 1; return `<button data-action="${n}" data-verb="${a.verb}" ${a.enabled ? '' : 'disabled'} aria-label="${a.label} in jar ${index + 1}">${a.icon} ${a.label}${a.cost ? ` · ${a.cost} energy` : ''}</button>`; }).join('');
         return `<article class="jar-card"><span class="jar-state ${planted && !tray.watered && stage !== 'ready' ? 'thirsty' : ''}">Jar ${index + 1} · ${stage === 'empty' ? 'Ready for a seed' : stage === 'ready' ? 'Ready to plant' : tray.watered ? 'Watered today' : 'Needs water'}</span><img src="${services.icon(`hydro_${stage}_${tray.watered ? 'wet' : 'dry'}`)}" alt="${stage} nursery jar"/><h3>${tray.seed ? speciesName(tray.seed) : 'A new beginning'}</h3><p>${planted ? `${Math.min(2, tray.growth)} / 2 watered nights` : 'Collect seeds from a healthy native.'}</p>${buttons}</article>`;
       }).join(''));
     };

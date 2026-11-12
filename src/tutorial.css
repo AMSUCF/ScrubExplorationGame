@@ -1,0 +1,142 @@
+/* ---------- Tutorial: the start choice, the coach card, and button highlights ---------- */
+
+/* How would you like to begin? */
+.overlay.begin .card { width: min(100%, 520px); padding: 26px 24px 18px; text-align: left; }
+.overlay.begin h2 { margin: 6px 0 4px; font-family: Fraunces, Georgia, serif; font-size: 30px; font-weight: 650; line-height: 1.1; letter-spacing: -.02em; color: #466749; }
+.overlay.begin .begin-lede { margin: 0 0 16px; color: #6d795d; font-size: 14px; font-weight: 600; }
+.begin-options { display: grid; gap: 12px; }
+.overlay.begin .card button.begin-option {
+  display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 14px; align-items: center;
+  min-height: 0; padding: 14px 16px 14px 12px; text-align: left;
+  border: 2px solid #e6dcbd; border-radius: 18px; background: #fffaf0; box-shadow: 0 3px 0 #d8cba8;
+  font-size: inherit; font-weight: inherit; transition: border-color .15s, background .15s, translate .15s;
+}
+.overlay.begin .card button.begin-option:hover { border-color: #b9cf9f; background: #fbfdf3; translate: 0 -1px; }
+.overlay.begin .card button.begin-option.guided { border-color: #9dbb86; background: linear-gradient(135deg, #eff7e3, #fffaf0 70%); box-shadow: 0 3px 0 #8fae78; }
+.begin-option img { width: 70px; height: 70px; object-fit: contain; filter: drop-shadow(0 3px 3px #3d33281f); }
+.begin-copy { display: grid; gap: 3px; }
+.begin-copy b { font-family: Fraunces, Georgia, serif; font-size: 21px; font-weight: 650; line-height: 1.15; color: #466749; }
+.begin-copy small { font-size: 13px; line-height: 1.42; font-weight: 600; color: #6d6450; }
+.begin-copy em { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-style: normal; font-size: 10.5px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; color: #5d8a52; }
+.begin-copy em .pictogram { width: 16px; height: 16px; }
+.overlay.begin .card button.begin-back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-top: 12px; padding: 6px 8px; border: 0; background: none; box-shadow: none; color: #768265; font-size: 13px; font-weight: 800; }
+.begin-back .pictogram { width: 18px; height: 18px; }
+
+/* The pause menu's Tutorial toggle shows the little robot. */
+.menu .menu-bot { width: 30px; height: 30px; object-fit: contain; display: block; margin: 0 auto; }
+
+/* The coach sits under the HUD's inventory, where the gentle journey hints usually go. */
+.coach {
+  position: absolute;
+  top: var(--below-inventory, calc(126px + var(--safe-t)));
+  left: calc(10px + var(--safe-l));
+  width: min(400px, calc(100% - 20px - var(--safe-l) - var(--safe-r)));
+  z-index: 7;
+  pointer-events: auto;
+}
+.coach[hidden] { display: none; }
+/* Behind a card or close-up the coach keeps its space, so the room below doesn't jump. */
+.coach.behind { visibility: hidden; }
+
+.coach-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px 13px 10px;
+  border: 1px solid #fff8df;
+  border-radius: 18px;
+  background: #fbf5e6f7;
+  box-shadow: 0 3px 0 #8874542e, 0 10px 26px #3d332824;
+  overflow: hidden;
+  color: var(--ink);
+}
+.coach-bot { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 2px #3d33281f); animation: coach-bob 2.8s ease-in-out infinite; }
+.coach-eyebrow { min-height: 22px; padding-right: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; font-weight: 900; line-height: 22px; letter-spacing: .1em; text-transform: uppercase; color: #7e8868; }
+.coach-count { color: var(--leaf-dark); letter-spacing: .04em; }
+.coach-title { margin: 0 0 2px; padding-right: 8px; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 650; line-height: 1.15; letter-spacing: -.01em; color: #466749; }
+.coach-text { margin: 0; font-size: 13px; line-height: 1.42; font-weight: 600; color: #5e5545; }
+.coach-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; }
+.coach-tools { position: absolute; top: 7px; right: 7px; display: flex; align-items: center; gap: 4px; }
+.coach-skip { min-height: 30px; padding: 4px 8px; border: 0; border-radius: 999px; background: none; color: #8b846b; font-size: 11px; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+.coach-skip:hover { background: #efe6cc; }
+.coach-skip.armed { background: #f7c9b8; color: #8a3a26; text-decoration: none; animation: shake .3s; }
+.coach-ack { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 8px 18px 8px 10px; border: 0; border-radius: 999px; background: #5e8059; color: #fff6de; font-size: 14px; font-weight: 800; box-shadow: 0 3px 0 #42633e; }
+.coach-ack:active { translate: 0 2px; box-shadow: 0 1px 0 #42633e; }
+.coach-ack .pictogram { width: 22px; height: 22px; }
+.coach-min { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #efe6cc; color: #6d7a5c; }
+.coach-min svg, .coach-pill svg { width: 18px; height: 18px; }
+.coach-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: #e8dfc4; }
+.coach-progress i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: linear-gradient(90deg, #a3c48b, #5d8a52); transition: width .6s ease; }
+
+/* Detours (a fire, or the wrong place for this step) get a warmer note. */
+.coach.detour .coach-card { background: #fff1d9f7; }
+.coach.detour .coach-eyebrow { color: #b46a3c; }
+
+/* Tucked away: a slim pill that still names the step. */
+.coach-pill { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 40px; padding: 5px 10px 5px 6px; border: 1px solid #fff8df; border-radius: 999px; background: #fbf5e6f2; box-shadow: 0 2px 0 #8874542e, 0 6px 16px #3d33281f; color: #5e5545; font-size: 12px; }
+.coach-pill img { width: 28px; height: 28px; object-fit: contain; }
+.coach-pill .pictogram { width: 24px; height: 24px; }
+.coach-pill .coach-count { font-size: 10px; font-weight: 900; }
+.coach-pill b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: #466749; }
+.coach-pill svg { flex: none; transform: rotate(180deg); color: #6d7a5c; }
+
+/* A finished step gets a little cheer before the next one. */
+.coach-card.coach-cheer { grid-template-columns: auto auto; justify-content: start; align-items: center; padding: 12px 20px 12px 12px; }
+.coach-check { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #e4f2d6; animation: coach-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+.coach-check .pictogram { width: 24px; height: 24px; }
+.coach-cheer b { font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 650; color: #466749; }
+
+.coach.arrive > * { animation: coach-in .32s ease-out; }
+@keyframes coach-in { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+@keyframes coach-pop { from { transform: scale(.3); } }
+@keyframes coach-bob { 50% { transform: translateY(-3px) rotate(-3deg); } }
+
+/* Things that sit at the same spot step down below the coach. */
+.hud .today-list { top: calc(var(--below-inventory, calc(126px + var(--safe-t))) + var(--coach-h, 0px)); }
+.hud:has(.action-dock:not([hidden])) .world-message { top: calc(var(--below-inventory, calc(126px + var(--safe-t))) + var(--coach-h, 0px)); }
+
+/* The button the coach wants pressed: a soft golden pulse and a tapping finger. */
+.tut-glow:not(.off):not(:disabled) { position: relative; outline: 3px solid #f2c45a !important; outline-offset: 2px; animation: tut-glow 1.5s ease-in-out infinite; }
+.tut-glow:not(.off):not(:disabled)::after {
+  content: ''; position: absolute; right: -9px; bottom: -14px; z-index: 3; width: 30px; height: 30px;
+  background: url('/art/ui_pointer.png') center / contain no-repeat; pointer-events: none;
+  filter: drop-shadow(0 2px 2px #3d332840); animation: tut-tap .7s ease-in-out infinite alternate;
+}
+@keyframes tut-glow { 0%, 100% { box-shadow: 0 0 0 0 #f2c45acc; } 60% { box-shadow: 0 0 0 11px #f2c45a00; } }
+@keyframes tut-tap { to { transform: translateY(-5px); } }
+
+/* Short phones: while the action tray is open, the coach shrinks to its heading. */
+@media (max-height: 620px) and (orientation: portrait) {
+  .hud:has(.action-dock:not([hidden])) .coach .coach-text,
+  .hud:has(.action-dock:not([hidden])) .coach .coach-actions { display: none; }
+}
+
+@media (max-width: 350px) {
+  .coach-card { grid-template-columns: 36px minmax(0, 1fr); gap: 8px; }
+  .coach-eyebrow { padding-right: 84px; font-size: 8.5px; letter-spacing: .07em; }
+  .coach-bot { width: 36px; height: 36px; }
+  .coach-title { font-size: 17px; }
+  .coach-text { font-size: 12px; }
+  .overlay.begin h2 { font-size: 25px; }
+  .overlay.begin .card button.begin-option { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  .begin-option img { width: 52px; height: 52px; }
+}
+
+/* Landscape phones: the coach floats at the right, clear of the room and the left-hand HUD. */
+@media (max-height: 540px) and (orientation: landscape) {
+  .coach { left: auto; right: calc(10px + var(--safe-r)); top: var(--below-topbar, calc(76px + var(--safe-t))); width: min(290px, 36vw); }
+  .coach-card { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; padding: 7px 10px 10px 8px; }
+  .coach-bot { width: 32px; height: 32px; }
+  .coach-title { font-size: 16px; }
+  .coach-text { font-size: 11.5px; line-height: 1.38; }
+  .hud .today-list { top: var(--below-inventory, calc(126px + var(--safe-t))); }
+  .hud:has(.action-dock:not([hidden])) .coach .coach-text,
+  .hud:has(.action-dock:not([hidden])) .coach .coach-actions { display: none; }
+  .overlay.begin .card { width: min(100%, 680px); padding: 16px 18px 10px; }
+  .overlay.begin h2 { font-size: 24px; }
+  .overlay.begin .begin-lede { margin-bottom: 10px; }
+  .begin-options { grid-template-columns: 1fr 1fr; }
+  .overlay.begin .card button.begin-option { grid-template-columns: 1fr; justify-items: start; gap: 6px; padding: 12px; }
+  .begin-option img { width: 48px; height: 48px; }
+}

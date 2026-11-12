@@ -40,6 +40,8 @@ try {
 
   await page.goto(URL);
   await page.getByRole('button', { name: 'Start' }).click();
+  // The begin card: this run checks the free-play basics, so it skips the tutorial.
+  await page.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
   await active('Intro');
   await page.waitForTimeout(3600);
   await page.screenshot({ path: 'screenshots/1-intro.png' });

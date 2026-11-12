@@ -70,7 +70,7 @@ export class BootScene extends Phaser.Scene {
     }
     await ground;
     loading?.remove();
-    startGame(this, choice === 'continue' && saved ? saved : newGame());
+    startGame(this, choice.start === 'continue' && saved ? saved : newGame(undefined, { tutorial: choice.start === 'new' && choice.tutorial }));
     // Warm the cache for the DOM-only art, so cards and mini-games open with their pictures ready. One
     // file at a time, the big dig sand last, so the first HUD icons aren't kept waiting on a slow link.
     void (async () => {

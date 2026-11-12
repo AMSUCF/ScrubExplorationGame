@@ -59,7 +59,7 @@ export class RadialMenu {
       <div class="action-options">${actions.map((a, i) => {
         const icon = a.tex ? `<img class="tex" src="${services.icon(a.tex)}" alt=""/><span class="verb">${a.icon}</span>` : `<span class="emoji">${a.icon}</span>`;
         const cost = a.parts !== undefined ? `${ICON.parts} ${a.parts} parts` : a.cost ? `${ICON.battery} ${a.cost} energy` : 'No energy';
-        return `<button class="rbtn${a.enabled ? '' : ' off'}" data-i="${i}" aria-label="${safe(a.label)}" aria-disabled="${!a.enabled}" title="${safe(a.enabled ? a.label : blocked(a))}"><span class="action-art">${icon}</span><span class="action-label">${safe(a.label)}</span><span class="action-cost">${a.enabled ? cost : safe(blocked(a))}</span><span class="kbd">${i + 1}</span></button>`;
+        return `<button class="rbtn${a.enabled ? '' : ' off'}" data-i="${i}" data-verb="${a.verb}" aria-label="${safe(a.label)}" aria-disabled="${!a.enabled}" title="${safe(a.enabled ? a.label : blocked(a))}"><span class="action-art">${icon}</span><span class="action-label">${safe(a.label)}</span><span class="action-cost">${a.enabled ? cost : safe(blocked(a))}</span><span class="kbd">${i + 1}</span></button>`;
       }).join('')}</div><p class="action-hint" role="status"></p></section>`);
     requestAnimationFrame(() => this.root.classList.add('in'));
   }

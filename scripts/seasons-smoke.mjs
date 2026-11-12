@@ -30,6 +30,7 @@ try {
 
   await page.goto(`http://localhost:${PORT}/?debug`);
   await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('World'));
   await page.waitForTimeout(600);

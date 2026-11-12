@@ -16,7 +16,8 @@
     "art:check": "node scripts/art/check.mjs",
     "art:smoke": "node scripts/art-smoke.mjs",
     "restoration:smoke": "node scripts/restoration-smoke.mjs",
-    "seasons:smoke": "node scripts/seasons-smoke.mjs"
+    "seasons:smoke": "node scripts/seasons-smoke.mjs",
+    "tutorial:smoke": "node scripts/tutorial-smoke.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"

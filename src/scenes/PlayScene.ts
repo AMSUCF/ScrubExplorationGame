@@ -28,8 +28,10 @@ import { vineHost } from '../data/visuals';
 import { showVineCare } from '../ui/vineCare';
 import { targetInfo } from '../ui/targetInfo';
 import { keyVector, setKeyHandlers } from '../ui/input';
-import { isOverlayOpen, showBoard, showDiscovery, showFieldGuide, showLevelUp, showMenu, showMonitor } from '../ui/overlays';
+import { chooseBeginning, isOverlayOpen, showBoard, showDiscovery, showFieldGuide, showLevelUp, showMenu, showMonitor } from '../ui/overlays';
 import { RadialMenu } from '../ui/radial';
+import { Pointer, noteTutorial } from '../systems/tutorial';
+import { TutorialPointer } from './tutorialPointer';
 
 export interface Interactable {
   target: Target;
@@ -45,6 +47,13 @@ export interface Interactable {
 
 const TAP_SLOP = 8;
 const DRAG_START = 14;
+/** Small things (an anole, a can) still get a finger-sized touch target, in world px. */
+const MIN_HIT = 28;
+
+function touchBox(b: { x: number; y: number; w: number; h: number }) {
+  const w = Math.max(b.w, MIN_HIT), h = Math.max(b.h, MIN_HIT);
+  return { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
+}
 
 export abstract class PlayScene extends Phaser.Scene {
   protected state!: GameState;
@@ -57,6 +66,9 @@ export abstract class PlayScene extends Phaser.Scene {
   private hovered: Interactable | null = null;
   private saveTimer: number | null = null;
   protected down: { x: number; y: number; steering: boolean } | null = null;
+  private tutorHand!: TutorialPointer;
+  private moveFrom = { x: 0, y: 0 };
+  private handCache: { key: string; at: number; it: Interactable | null } = { key: '', at: 0, it: null };
 
   // --- what subclasses provide -------------------------------------------------------------
   protected abstract grid(): Grid;
@@ -83,6 +95,9 @@ export abstract class PlayScene extends Phaser.Scene {
       emitting: false,
     });
     this.sparkles.setDepth(100000);
+    this.tutorHand = new TutorialPointer(this);
+    this.moveFrom = { x: this.robot.x, y: this.robot.y };
+    this.handCache = { key: '', at: 0, it: null };
 
     this.input.on('pointerdown', this.onPointerDown, this);
     this.input.on('pointermove', this.onPointerMove, this);
@@ -105,7 +120,10 @@ export abstract class PlayScene extends Phaser.Scene {
       this.menu.hide();
       this.menu.destroy();
       setKeyHandlers(null);
+      // Scenes are reused: forget the pending save too, or saveSoon() would wait on it forever.
+      // (Transitions save straight away, and the next scene saves as it opens.)
       if (this.saveTimer !== null) window.clearTimeout(this.saveTimer);
+      this.saveTimer = null;
     });
     services.hud?.setVisible(true);
   }
@@ -113,17 +131,23 @@ export abstract class PlayScene extends Phaser.Scene {
   // --- pointer -----------------------------------------------------------------------------
 
   private hitTest(wx: number, wy: number): Interactable | 'robot' | null {
-    if (Math.hypot(wx - this.robot.x, wy - (this.robot.y - 4)) < 18) return 'robot';
+    const robotD = Math.hypot(wx - this.robot.x, wy - (this.robot.y - 4));
     let best: Interactable | null = null;
     let bestD = Infinity;
     for (const it of this.interactables()) {
-      const b = it.bounds;
+      const b = it.bounds && touchBox(it.bounds);
       const d = b ? Math.hypot((wx - b.x - b.w / 2) / (b.w / 2), (wy - b.y - b.h / 2) / (b.h / 2)) : Math.hypot(wx - it.x, wy - it.y) / (it.r + TAP_SLOP);
       const inside = b ? wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h : d < 1;
       if (inside && d < bestD) {
         best = it;
         bestD = d;
       }
+    }
+    if (robotD < 18) {
+      // The robot wins, unless it is only standing beside the thing tapped: a tap nearer that
+      // thing's middle than the robot's means the thing (the robot often parks right next to it).
+      const c = best?.bounds ? { x: best.bounds.x + best.bounds.w / 2, y: best.bounds.y + best.bounds.h / 2 } : best;
+      if (!c || Math.hypot(wx - c.x, wy - c.y) >= robotD) return 'robot';
     }
     return best;
   }
@@ -355,6 +379,8 @@ export abstract class PlayScene extends Phaser.Scene {
     playActionSound(fresh, res, hpBefore);
     this.feedback(res);
     if (!res.ok) return;
+    noteTutorial(this.state, fresh.verb);
+    if (vine) noteTutorial(this.state, 'vine');
     if (this.handleTransition(res)) {
       this.closeMenu();
       this.saveSoon();
@@ -523,15 +549,26 @@ export abstract class PlayScene extends Phaser.Scene {
   async openPause(): Promise<void> {
     if (isOverlayOpen() || this.busy) return;
     this.closeMenu();
-    if ((await showMenu(this.state)) === 'new') {
-      clearSave();
-      services.unseenGuide = 0;
-      this.scene.start('Intro', { state: newGame() });
+    if ((await showMenu(this.state)) !== 'new') {
+      this.saveSoon();
+      return;
     }
+    const tutorial = await chooseBeginning();
+    if (tutorial === null) return;
+    clearSave();
+    services.unseenGuide = 0;
+    this.scene.start('Intro', { state: newGame(undefined, { tutorial }) });
+  }
+
+  /** Something the tutorial listens for happened outside the action tray (the Today list, the monitor…). */
+  tutorialMoment(moment: string): void {
+    noteTutorial(this.state, moment);
+    this.saveSoon();
   }
 
   async openGuide(): Promise<void> {
     if (isOverlayOpen() || this.busy) return;
+    this.tutorialMoment('guide');
     services.unseenGuide = 0;
     this.closeMenu();
     await showFieldGuide(this.state);
@@ -555,9 +592,85 @@ export abstract class PlayScene extends Phaser.Scene {
     saveGame(this.state);
   }
 
+  // --- tutorial ----------------------------------------------------------------------------
+
+  /** Keep the coach up to date and move its hand to whatever it points at. */
+  private syncCoach(delta: number): void {
+    const coach = services.coach;
+    if (!coach) return;
+    const outside = this.state.location === 'outside';
+    if (outside && this.state.tutorial && !this.state.tutorial.did.move && Math.hypot(this.robot.x - this.moveFrom.x, this.robot.y - this.moveFrom.y) > 56) {
+      noteTutorial(this.state, 'move');
+    }
+    const { pointer, changed } = coach.sync(this.state, { overlay: isOverlayOpen(), robot: outside ? { x: this.robot.x, y: this.robot.y } : undefined });
+    if (changed) this.saveSoon();
+    if (outside) {
+      // While the coach covers the top of the view, the camera eases up so the robot sits a little
+      // lower and more of the scrub ahead stays in sight.
+      const cam = this.cameras.main;
+      const dpr = (this.registry.get('dpr') as number) ?? 1;
+      const want = (coach.coverHeight() / 2) * (dpr / cam.zoom);
+      const cur = cam.followOffset.y;
+      if (Math.abs(want - cur) > 0.5) cam.setFollowOffset(0, cur + (want - cur) * Math.min(1, delta / 350));
+    }
+    // Once the tray for that very thing is open, its glowing button takes over from the hand.
+    const spot = pointer && !this.busy && !(this.menu.open && this.isMenuTarget(pointer)) ? this.pointerSpot(pointer) : null;
+    this.tutorHand.update(spot, spot ? coach.topInset() : 0, delta);
+  }
+
+  /** The interactable a pointer means (re-found a few times a second; animals keep their live spot). */
+  private pointerTarget(p: Pointer): Interactable | null {
+    const key = JSON.stringify(p);
+    const now = this.time.now;
+    if (key !== this.handCache.key || now - this.handCache.at > 200) {
+      const it = this.interactables().find((i) => {
+        const t = i.target;
+        switch (p.kind) {
+          case 'entity': return t.type === 'entity' && t.entity.id === p.id;
+          case 'station': return t.type === 'station' && t.station.kind === p.station;
+          case 'home': return t.type === 'home' && t.item.kind === p.item && (p.index === undefined || t.item.index === p.index);
+          case 'fire': return t.type === 'fire' && t.tx === p.tx && t.ty === p.ty;
+          default: return false;
+        }
+      }) ?? null;
+      this.handCache = { key, at: now, it };
+    }
+    return this.handCache.it;
+  }
+
+  private pointerSpot(p: Pointer): { x: number; y: number } | null {
+    if (p.kind === 'self') return { x: this.robot.x, y: this.robot.y - 8 };
+    if (p.kind === 'point') return p;
+    const it = this.pointerTarget(p);
+    if (!it) return null;
+    const b = it.bounds;
+    const e = it.target.type === 'entity' ? it.target.entity : null;
+    if (e && isAnimal(e)) {
+      // Animals wander: keep the hand on the middle of their box, wherever they are now.
+      const dy = b ? b.y + b.h / 2 - (it.y + 6) : -6;
+      return { x: e.x, y: e.y + dy };
+    }
+    return b ? { x: b.x + b.w / 2, y: b.y + b.h * 0.6 } : { x: it.x, y: it.y - 4 };
+  }
+
+  private isMenuTarget(p: Pointer): boolean {
+    const t = this.menuTarget?.target;
+    if (!t) return false;
+    if (p.kind === 'self') return t.type === 'self';
+    const it = p.kind === 'point' ? null : this.pointerTarget(p);
+    if (!it) return false;
+    const a = it.target;
+    if (a.type === 'entity' && t.type === 'entity') return a.entity.id === t.entity.id;
+    if (a.type === 'station' && t.type === 'station') return a.station.kind === t.station.kind;
+    if (a.type === 'home' && t.type === 'home') return a.item.kind === t.item.kind && a.item.index === t.item.index;
+    if (a.type === 'fire' && t.type === 'fire') return a.tx === t.tx && a.ty === t.ty;
+    return false;
+  }
+
   // --- frame -------------------------------------------------------------------------------
 
   protected updatePlay(delta: number): void {
+    this.syncCoach(delta);
     if (isOverlayOpen()) { this.down = null; this.robot.stop(); audio.motor(0); return; }
     const dt = Math.min(delta, 100);
     const keys = this.busy ? { x: 0, y: 0 } : keyVector();

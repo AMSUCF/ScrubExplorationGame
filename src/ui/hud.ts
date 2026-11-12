@@ -2,12 +2,13 @@
 import { audio } from '../audio';
 import { BAG_CAPACITY, JAR_CAPACITY } from '../config';
 import { ICON } from '../data/icons';
-import { ZONE_NAME, ZoneId } from '../data/map';
+import { VINE_ROOT, ZONE_NAME, ZoneId } from '../data/map';
 import { batteryFraction } from '../systems/battery';
 import { SEASON_NAME, calendar } from '../systems/calendar';
 import { levelProgress } from '../systems/progress';
 import { WEATHER } from '../systems/weather';
 import { GameState, NATIVE_PLANTS } from '../systems/state';
+import { tutorialActive } from '../systems/tutorial';
 import { services } from '../services';
 import { renderIcons } from './icons';
 
@@ -24,10 +25,12 @@ const ZONE_ICON: Record<ZoneId, string> = { base: 'pod0', sand: 'palmetto', oak:
 export interface HudCallbacks {
   onGuide(): void;
   onMenu(): void;
+  /** The Today list was opened. */
+  onTasks?(): void;
 }
 
 export class Hud {
-  private root: HTMLElement;
+  readonly root: HTMLElement;
   private batteryFill: HTMLElement;
   private batteryText: HTMLElement;
   private dayText: HTMLElement;
@@ -79,6 +82,7 @@ export class Hud {
     guide.innerHTML = renderIcons(`${ICON.info}<small>Guide</small>`);
     guide.title = 'Field guide (G)';
     guide.setAttribute('aria-label', 'Field guide');
+    guide.dataset.hud = 'guide';
     this.guideBadge = el('span', 'badge', guide);
     guide.addEventListener('click', cb.onGuide);
     const sound = el('button', 'icon-btn', buttons);
@@ -106,6 +110,7 @@ export class Hud {
       this.tasksOpen = !this.tasksOpen;
       this.cache.delete('tasks');
       audio.sfx('page');
+      if (this.tasksOpen) cb.onTasks?.();
     });
     this.tasks = el('div', 'today-list', this.root);
     this.tasks.hidden = true;
@@ -199,8 +204,15 @@ export class Hud {
       this.tasks.hidden = !this.tasksOpen || !goals.length;
       this.tasks.innerHTML = renderIcons(`<h3>Today’s little list</h3><ul>${list}</ul>`);
     });
-    const hint = state.location === 'home' ? '' : state.fires.length ? 'A fire is burning. Tap the flames: contain it, or let it renew old scrub.' : !state.scanned.includes('cogon') ? 'Start small: tap the white-plumed grass, then Scan.' : state.entities.some(e => e.kind === 'invasivePlant' && e.tx === 31 && e.ty === 28 && e.species === 'airpotato') ? 'A little rescue: free the vine-covered oak northeast of home.' : state.stats.planted === 0 ? 'Healthy natives offer seeds. Grow them in the pod’s nursery.' : 'A healthier scrub brings new neighbors. Say hello when they arrive.';
+    // The tutorial's coach takes over from these gentle hints while it is running.
+    const hint = state.location === 'home' || tutorialActive(state) ? '' : state.fires.length ? 'A fire is burning. Tap the flames: contain it, or let it renew old scrub.' : !state.scanned.includes('cogon') ? 'Start small: tap the white-plumed grass, then Scan.' : state.entities.some(e => e.kind === 'invasivePlant' && e.tx === VINE_ROOT.tx && e.ty === VINE_ROOT.ty && e.species === 'airpotato') ? 'A little rescue: free the vine-covered oak northeast of home.' : state.stats.planted === 0 ? 'Healthy natives offer seeds. Grow them in the pod’s nursery.' : 'A healthier scrub brings new neighbors. Say hello when they arrive.';
     this.set('hint', hint, () => { this.hint.textContent = hint; this.hint.hidden = !hint; });
+  }
+
+  /** CSS px from the top of the screen covered by the topbar, inventory and (when it sits there) the coach. */
+  topStack(): number {
+    const bottom = (sel: string) => this.root.querySelector<HTMLElement>(sel)?.getBoundingClientRect().bottom ?? 0;
+    return Math.max(bottom('.topbar'), bottom('.inventory'), services.coach?.inTopStack() ? bottom('.coach') : 0);
   }
 
   toast(text: string): void {

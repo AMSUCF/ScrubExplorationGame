@@ -57,6 +57,7 @@ try {
   assert.notEqual(await sound.getAttribute('aria-pressed'), before, 'Title sound toggle did not change');
   await sound.click();
   await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
   await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('World'));
   await page.waitForFunction(() => !window.__game.scene.getScene('World').cameras.main.fadeEffect.isRunning);
@@ -139,6 +140,12 @@ try {
   await page.getByRole('button', { name: 'New game', exact: true }).click();
   assert(await page.getByRole('button', { name: 'Continue', exact: true }).isVisible(), 'A single New game tap discarded the save');
   await page.getByRole('button', { name: 'New game', exact: true }).click();
+  // Back from the begin card keeps the save; choosing a way in starts the new game.
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  assert(await page.getByRole('button', { name: 'Continue', exact: true }).isVisible(), 'Back from the begin card left the title');
+  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await page.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
   await page.waitForFunction(() => window.__game.scene.isActive('Intro'));
 
   // Low-memory devices and the Canvas renderer keep the 1× ground; it must still fill the world.
@@ -155,6 +162,7 @@ try {
     await p.addInitScript(init);
     await p.goto('http://localhost:4175/?debug');
     await p.getByRole('button', { name: 'Start', exact: true }).click();
+    await p.getByRole('button', { name: 'Start without the tutorial', exact: true }).click();
     await p.getByRole('button', { name: 'Skip intro', exact: true }).click();
     await p.waitForFunction(() => window.__game.scene.isActive('World'));
     const ground = await p.evaluate(() => {

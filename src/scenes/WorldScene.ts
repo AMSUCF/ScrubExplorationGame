@@ -26,6 +26,7 @@ import { FireFx } from './world/fireFx';
 import { WeatherFx } from './world/weatherFx';
 import { FrostFx, Frosted, frostToday } from './world/frostFx';
 import { frostThisWinter } from '../systems/weather';
+import { tutorialActive } from '../systems/tutorial';
 
 const S = 1 / ART_SCALE;
 const SIGHT_RANGE = 120;
@@ -127,7 +128,8 @@ export class WorldScene extends PlayScene {
     audio.music('scrub');
     audio.ambient('day');
     audio.weather(this.state.weather.kind, this.state.weather.windSpeed);
-    if (this.state.day === 1 && this.state.stats.invasivesRemoved === 0) this.showPointer();
+    // The tutorial's coach has its own hand; otherwise a wordless finger shows where to start.
+    if (this.state.day === 1 && this.state.stats.invasivesRemoved === 0 && !tutorialActive(this.state)) this.showPointer();
     this.saveNow();
   }
 

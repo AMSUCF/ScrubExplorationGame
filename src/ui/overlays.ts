@@ -18,6 +18,7 @@ import { FIRE_STATE_INFO, FireState, fireState, tileIndex, zoneFire, zoneOf } fr
 import { incursionPressure } from '../systems/incursion';
 import { levelProgress } from '../systems/progress';
 import { WEATHER } from '../systems/weather';
+import { setTutorialTips, tutorialActive, tutorialUnfinished } from '../systems/tutorial';
 
 export type IconSource = (key: string) => string;
 
@@ -84,7 +85,44 @@ function armable(btn: HTMLElement): boolean {
 
 // --- title ------------------------------------------------------------------------------
 
-export function showTitle(hasSave: boolean): Promise<'continue' | 'new'> {
+export type TitleChoice = { start: 'continue' } | { start: 'new'; tutorial: boolean };
+
+/** How to begin a new game: with the guided first days, or straight in. Resolves null for Back. */
+export function chooseBeginning(): Promise<boolean | null> {
+  return new Promise((resolve) => {
+    const { root, close } = overlay(
+      'begin',
+      `<div class="eyebrow">${ICON.sparkle} A fresh beginning</div>
+       <h2>How would you like to begin?</h2>
+       <p class="begin-lede">Either way, your pod lands in the same wild, tangled scrub.</p>
+       <div class="begin-options">
+         <button class="begin-option guided" data-begin="tutorial" aria-label="Start with the tutorial">
+           <img src="${icon('robot')}" alt="" />
+           <span class="begin-copy"><b>Show me around</b><small>A friendly guide for your first three days: clearing, rescuing, growing and planting.</small><em>${ICON.heart} Best for first-time helpers</em></span>
+         </button>
+         <button class="begin-option" data-begin="free" aria-label="Start without the tutorial">
+           <img src="${icon('pod0')}" alt="" />
+           <span class="begin-copy"><b>I know the way</b><small>Jump straight in. Little hints and the field guide are always there if you need them.</small></span>
+         </button>
+       </div>
+       <button class="begin-back" data-begin="back" aria-label="Back">${ICON.back}<span>Back</span></button>`,
+    );
+    root.querySelector('.card')?.setAttribute('aria-label', 'How would you like to begin?');
+    const done = (pick: boolean | null) => {
+      close();
+      resolve(pick);
+    };
+    root.addEventListener('click', (e) => {
+      const act = (e.target as HTMLElement).closest<HTMLElement>('[data-begin]')?.dataset.begin;
+      if (act === 'tutorial' || act === 'free') done(act === 'tutorial');
+      else if (act === 'back') done(null);
+    });
+    onEscape(root, () => done(null));
+    focusFirst(root);
+  });
+}
+
+export function showTitle(hasSave: boolean): Promise<TitleChoice> {
   return new Promise((resolve) => {
     const { root, close } = overlay(
       'title',
@@ -106,9 +144,11 @@ export function showTitle(hasSave: boolean): Promise<'continue' | 'new'> {
        <footer class="title-footer"><span>Take your time. Nature does.</span><span class="title-habitat">${ICON.day} Made for curious hearts</span></footer>
        <div class="title-motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>`,
     );
-    root.addEventListener('click', (e) => {
+    let choosing = false;
+    root.addEventListener('click', async (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       const act = btn?.dataset.act;
+      if (choosing) return;
       if (act === 'sound') {
         audio.unlock();
         audio.toggleAll();
@@ -125,9 +165,20 @@ export function showTitle(hasSave: boolean): Promise<'continue' | 'new'> {
         }, 2500);
         return;
       }
-      if (act === 'continue' || act === 'new') {
+      if (act === 'continue') {
         close();
-        resolve(act);
+        resolve({ start: 'continue' });
+      } else if (act === 'new') {
+        choosing = true;
+        const tutorial = await chooseBeginning();
+        choosing = false;
+        if (tutorial === null) {
+          btn?.classList.remove('armed');
+          btn?.focus({ preventScroll: true });
+          return;
+        }
+        close();
+        resolve({ start: 'new', tutorial });
       }
     });
     root.querySelector<HTMLButtonElement>('.title-start')?.focus({ preventScroll: true });
@@ -441,6 +492,7 @@ export function showMenu(state: GameState): Promise<'resume' | 'new'> {
          <button class="primary big-icon" data-act="resume" aria-label="Resume">▶<span class="menu-label">Keep exploring</span></button>
          <button class="big-icon toggle${audio.musicOn ? '' : ' muted'}" data-act="music" aria-label="Music" aria-pressed="${audio.musicOn}">🎵<span class="menu-label">Music</span></button>
          <button class="big-icon toggle${audio.sfxOn ? '' : ' muted'}" data-act="sfx" aria-label="Sound effects" aria-pressed="${audio.sfxOn}">🔔<span class="menu-label">Sounds</span></button>
+         ${tutorialUnfinished(state) ? `<button class="big-icon toggle${tutorialActive(state) ? '' : ' muted'}" data-act="tips" aria-label="Tutorial tips" aria-pressed="${tutorialActive(state)}"><img class="menu-bot" src="${icon('robot')}" alt="" /><span class="menu-label">Tutorial</span></button>` : ''}
          ${document.fullscreenEnabled ? '<button class="big-icon" data-act="full" aria-label="Fullscreen">⛶</button>' : ''}
          <button class="big-icon" data-act="new" aria-label="New game">✦<span class="menu-label">Start fresh</span></button>
        </div>`,
@@ -452,6 +504,13 @@ export function showMenu(state: GameState): Promise<'resume' | 'new'> {
         if (act === 'music') audio.toggleMusic();
         else audio.toggleSfx();
         const on = act === 'music' ? audio.musicOn : audio.sfxOn;
+        btn!.classList.toggle('muted', !on);
+        btn!.setAttribute('aria-pressed', String(on));
+        return;
+      }
+      if (act === 'tips') {
+        const on = !tutorialActive(state);
+        setTutorialTips(state, on);
         btn!.classList.toggle('muted', !on);
         btn!.setAttribute('aria-pressed', String(on));
         return;
