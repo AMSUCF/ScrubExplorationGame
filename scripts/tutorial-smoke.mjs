@@ -67,9 +67,9 @@ function drive(page) {
   /** Tap what the coach points at, and check the tray that opens is for that very thing. */
   const tapHand = async () => {
     for (let attempt = 0; attempt < 4; attempt++) {
-      // A new level's card can arrive at any time (raw taps don't trigger the locator handler).
-      while (await page.locator('.overlay.levelup.in').count()) {
-        await page.locator('.overlay.levelup.in [data-close]').click();
+      // A new level's card can arrive at any time (raw taps don't trigger the locator handler). Close it
+      // inside the page: a Playwright click would race that handler for the same button.
+      while (await page.evaluate(() => { const b = document.querySelector('.overlay.levelup.in [data-close]'); b?.click(); return !!b; })) {
         await page.waitForTimeout(250);
       }
       if (await dock.count()) {
