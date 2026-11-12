@@ -91,7 +91,8 @@ function drive(page) {
   const verb = async (v, glow = true) => {
     const b = dock.locator(`.rbtn[data-verb="${v}"]`);
     await b.waitFor({ timeout: 8000 });
-    if (glow) await page.waitForFunction((v) => document.querySelector(`.action-dock .rbtn[data-verb="${v}"]`)?.classList.contains('tut-glow'), v, { timeout: 2000 });
+    // The coach re-highlights a few times a second of game time; headless frames can stall for seconds.
+    if (glow) await page.waitForFunction((v) => document.querySelector(`.action-dock .rbtn[data-verb="${v}"]`)?.classList.contains('tut-glow'), v, { timeout: 8000 });
     await b.dispatchEvent('pointerdown');
   };
   const closeCard = async (cls) => {
@@ -116,7 +117,7 @@ function drive(page) {
       return w && !w.busy && !w.robot.busy;
     }, null, { timeout: 25000 });
   const coachTitle = () => page.locator('.coach:not([hidden]) .coach-title').textContent({ timeout: 8000 });
-  const glowing = (sel) => page.waitForFunction((s) => document.querySelector(s)?.classList.contains('tut-glow'), sel, { timeout: 4000 });
+  const glowing = (sel) => page.waitForFunction((s) => document.querySelector(s)?.classList.contains('tut-glow'), sel, { timeout: 8000 });
   const shot = (name) => page.screenshot({ path: `screenshots/${name}.png` });
   const startTutorialGame = async () => {
     await page.goto(URL);
@@ -256,7 +257,7 @@ try {
   await page.locator('.hud [data-tasks]').click();
   await page.waitForTimeout(1400);
   await page.getByRole('button', { name: 'Nursery', exact: true }).click();
-  await page.locator('.overlay.nursery [data-verb="water"].tut-glow').first().click({ timeout: 4000 });
+  await page.locator('.overlay.nursery [data-verb="water"].tut-glow').first().click({ timeout: 8000 });
   await t.closeCard('nursery');
   await t.waitStep('capture');
   await page.waitForTimeout(1400);
@@ -295,7 +296,7 @@ try {
   await t.waitStep('pot');
   await page.waitForTimeout(1400);
   await page.getByRole('button', { name: 'Nursery', exact: true }).click();
-  await page.locator('.overlay.nursery [data-verb="pot"].tut-glow').first().click({ timeout: 4000 });
+  await page.locator('.overlay.nursery [data-verb="pot"].tut-glow').first().click({ timeout: 8000 });
   await t.closeCard('nursery');
   await t.waitStep('plant');
   await page.waitForTimeout(1400);
