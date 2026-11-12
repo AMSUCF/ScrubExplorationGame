@@ -436,7 +436,24 @@ try {
   console.log('TUTORIAL OK — every step followed with real taps, highlights checked, layouts on phone, desktop, landscape and small phone; screenshots in ./screenshots');
 } catch (e) {
   let n = 0;
-  for (const ctx of browser.contexts()) for (const p of ctx.pages()) await p.screenshot({ path: `screenshots/tutorial-FAIL-${++n}.png` }).catch(() => undefined);
+  for (const ctx of browser.contexts()) {
+    for (const p of ctx.pages()) {
+      await p.screenshot({ path: `screenshots/tutorial-FAIL-${++n}.png` }).catch(() => undefined);
+      // What the game was doing, so a failure explains itself.
+      const state = await p.evaluate(() => {
+        const g = window.__game, k = ['World', 'Home'].find((k) => g?.scene.isActive(k));
+        const w = k && g.scene.getScene(k);
+        return {
+          scene: k, step: w && window.__systems.currentStepId(w.state), busy: w?.busy, walking: w?.robot.busy,
+          robot: w && [Math.round(w.robot.x), Math.round(w.robot.y)], battery: w && Math.round(w.state.battery),
+          menu: w?.menuTarget?.target.type, overlays: [...document.querySelectorAll('.overlay')].map((o) => o.className),
+          tray: [...document.querySelectorAll('.action-dock:not([hidden]) .rbtn')].map((b) => `${b.dataset.verb}${b.classList.contains('off') ? ' (off)' : ''}${b.classList.contains('tut-glow') ? ' *' : ''}`),
+          coach: document.querySelector('.coach-title')?.textContent,
+        };
+      }).catch((err) => `unavailable: ${err.message}`);
+      console.error(`state (page ${n}):`, JSON.stringify(state));
+    }
+  }
   throw e;
 } finally {
   await browser.close();
