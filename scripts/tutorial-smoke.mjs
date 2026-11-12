@@ -14,6 +14,10 @@ mkdirSync('screenshots', { recursive: true });
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'warn' });
 const browser = await chromium.launch();
 const errors = [];
+/** What the driver did, with times, printed if something fails. */
+const timeline = [];
+const T0 = Date.now();
+const mark = (what) => { timeline.push(`${((Date.now() - T0) / 1000).toFixed(1)}s ${what}`); if (timeline.length > 40) timeline.shift(); };
 
 /** Helpers bound to one page. */
 function drive(page) {
@@ -25,7 +29,7 @@ function drive(page) {
   const active = (key) => page.waitForFunction((k) => window.__game?.scene.isActive(k), key, { timeout: 30000 });
   const step = () => scene('return window.__systems.currentStepId(w.state)');
   const waitStep = (id, timeout = 15000) =>
-    page.waitForFunction((id) => {
+    mark(`wait for step ${id}`) ?? page.waitForFunction((id) => {
       const g = window.__game, k = ['World', 'Home'].find((k) => g.scene.isActive(k));
       return k && window.__systems.currentStepId(g.scene.getScene(k).state) === id;
     }, id, { timeout });
@@ -66,6 +70,7 @@ function drive(page) {
   };
   /** Tap what the coach points at, and check the tray that opens is for that very thing. */
   const tapHand = async () => {
+    mark('tap hand');
     for (let attempt = 0; attempt < 4; attempt++) {
       // A new level's card can arrive at any time (raw taps don't trigger the locator handler). Close it
       // inside the page: a Playwright click would race that handler for the same button.
@@ -89,6 +94,7 @@ function drive(page) {
     throw new Error('could not tap what the coach points at');
   };
   const verb = async (v, glow = true) => {
+    mark(`verb ${v}`);
     const b = dock.locator(`.rbtn[data-verb="${v}"]`);
     await b.waitFor({ timeout: 8000 });
     // The coach re-highlights a few times a second of game time; headless frames can stall for seconds.
@@ -96,6 +102,7 @@ function drive(page) {
     await b.dispatchEvent('pointerdown');
   };
   const closeCard = async (cls) => {
+    mark(`close ${cls}`);
     await page.locator(`.overlay.${cls}.in [data-close]`).first().click({ timeout: 8000 });
     await page.waitForFunction((c) => !document.querySelector(`.overlay.${c}`), cls);
   };
@@ -140,6 +147,19 @@ async function newPage(viewport, { touch = true, scale = 2 } = {}) {
   page.setDefaultTimeout(15000);
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+  // The page notes each change to the action tray, for the failure report.
+  await page.addInitScript(() => {
+    window.__trayLog = [];
+    const t0 = Date.now();
+    new MutationObserver(() => {
+      const d = document.querySelector('.action-dock');
+      const now = d && !d.hidden ? [...d.querySelectorAll('.rbtn')].map((b) => b.dataset.verb).join(',') : 'closed';
+      const log = window.__trayLog;
+      if (log[log.length - 1]?.endsWith(now)) return;
+      log.push(`${((Date.now() - t0) / 1000).toFixed(1)}s tray ${now}`);
+      if (log.length > 30) log.shift();
+    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+  });
   // New stewardship levels arrive mid-tutorial (the camera at level 2); accept them as a player would.
   await page.addLocatorHandler(page.locator('.overlay.levelup.in'), async () => {
     await page.locator('.overlay.levelup.in [data-close]').click();
@@ -453,8 +473,10 @@ try {
         };
       }).catch((err) => `unavailable: ${err.message}`);
       console.error(`state (page ${n}):`, JSON.stringify(state));
+      console.error(`tray (page ${n}):`, (await p.evaluate(() => window.__trayLog).catch(() => [])).slice(-12).join(' | '));
     }
   }
+  console.error('driver:', timeline.slice(-14).join(' | '));
   throw e;
 } finally {
   await browser.close();
