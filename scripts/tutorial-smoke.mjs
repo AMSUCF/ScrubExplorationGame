@@ -108,6 +108,13 @@ function drive(page) {
     }
     await verb(v);
   };
+  /** Wait for the robot to finish: done walking over, and done with the action (slow headless frames). */
+  const idle = () =>
+    page.waitForFunction(() => {
+      const g = window.__game, k = ['World', 'Home'].find((k) => g.scene.isActive(k));
+      const w = k && g.scene.getScene(k);
+      return w && !w.busy && !w.robot.busy;
+    }, null, { timeout: 25000 });
   const coachTitle = () => page.locator('.coach:not([hidden]) .coach-title').textContent({ timeout: 8000 });
   const glowing = (sel) => page.waitForFunction((s) => document.querySelector(s)?.classList.contains('tut-glow'), sel, { timeout: 4000 });
   const shot = (name) => page.screenshot({ path: `screenshots/${name}.png` });
@@ -122,7 +129,7 @@ function drive(page) {
     await page.locator('.coach:not([hidden]) .coach-title').waitFor();
     await page.waitForTimeout(500);
   };
-  return { activeKey, scene, active, step, waitStep, handSpot, tapHand, verb, closeCard, actOnHand, coachTitle, glowing, shot, dock, startTutorialGame };
+  return { activeKey, scene, active, step, waitStep, handSpot, tapHand, verb, closeCard, actOnHand, idle, coachTitle, glowing, shot, dock, startTutorialGame };
 }
 
 /** Big canvases render slowly in headless software GL, so the desktop run uses 1× pixels. */
@@ -178,11 +185,9 @@ try {
   await t.shot('tutorial-05-pull');
   for (let i = 0; i < 8 && (await t.step()) === 'pull'; i++) {
     await t.actOnHand('remove');
-    await page.waitForFunction(() => {
-      const w = window.__game.scene.getScene('World');
-      return !w.busy;
-    });
-    await page.waitForTimeout(500);
+    // Let the robot drive over and finish pulling before the next try (a new tap would cancel it).
+    await page.waitForTimeout(300);
+    await t.idle();
   }
   await t.waitStep('seeds');
 
@@ -261,9 +266,12 @@ try {
   await t.active('World');
   await page.waitForTimeout(900);
   await t.shot('tutorial-13-capture');
-  for (let i = 0; i < 4 && (await t.step()) === 'capture'; i++) {
+  // Headless frames are slow, so a wandering animal can keep stepping out of reach: hold them still.
+  await t.scene('for (const v of w.views.values()) if (v.critter) v.critter.frozen = true');
+  for (let i = 0; i < 8 && (await t.step()) === 'capture'; i++) {
     await t.actOnHand('capture');
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(300);
+    await t.idle();
   }
   await t.waitStep('dropoff');
   await page.waitForTimeout(1400);
