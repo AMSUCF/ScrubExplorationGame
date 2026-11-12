@@ -17,7 +17,7 @@
 .begin-copy { display: grid; gap: 3px; }
 .begin-copy b { font-family: Fraunces, Georgia, serif; font-size: 21px; font-weight: 650; line-height: 1.15; color: #466749; }
 .begin-copy small { font-size: 13px; line-height: 1.42; font-weight: 600; color: #6d6450; }
-.begin-copy em { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-style: normal; font-size: 10.5px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; color: #5d8a52; }
+.begin-copy em { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; font-style: normal; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: #5d8a52; }
 .begin-copy em .pictogram { width: 16px; height: 16px; }
 .overlay.begin .card button.begin-back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-top: 12px; padding: 6px 8px; border: 0; background: none; box-shadow: none; color: #768265; font-size: 13px; font-weight: 800; }
 .begin-back .pictogram { width: 18px; height: 18px; }
@@ -52,13 +52,15 @@
   color: var(--ink);
 }
 .coach-bot { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 2px #3d33281f); animation: coach-bob 2.8s ease-in-out infinite; }
-.coach-eyebrow { min-height: 22px; padding-right: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; font-weight: 900; line-height: 22px; letter-spacing: .1em; text-transform: uppercase; color: #7e8868; }
-.coach-count { color: var(--leaf-dark); letter-spacing: .04em; }
+/* The chapter may shorten on narrow screens; the step count always shows. */
+.coach-eyebrow { display: flex; gap: 5px; min-height: 22px; padding-right: 92px; white-space: nowrap; font-size: 12px; font-weight: 900; line-height: 22px; letter-spacing: .05em; text-transform: uppercase; color: #7e8868; }
+.coach-chapter { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.coach-count { flex: none; color: var(--leaf-dark); letter-spacing: .02em; }
 .coach-title { margin: 0 0 2px; padding-right: 8px; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 650; line-height: 1.15; letter-spacing: -.01em; color: #466749; }
 .coach-text { margin: 0; font-size: 13px; line-height: 1.42; font-weight: 600; color: #5e5545; }
 .coach-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; }
 .coach-tools { position: absolute; top: 7px; right: 7px; display: flex; align-items: center; gap: 4px; }
-.coach-skip { min-height: 30px; padding: 4px 8px; border: 0; border-radius: 999px; background: none; color: #8b846b; font-size: 11px; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+.coach-skip { min-height: 30px; padding: 4px 8px; border: 0; border-radius: 999px; background: none; color: #8b846b; font-size: 12px; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 .coach-skip:hover { background: #efe6cc; }
 .coach-skip.armed { background: #f7c9b8; color: #8a3a26; text-decoration: none; animation: shake .3s; }
 .coach-ack { display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 8px 18px 8px 10px; border: 0; border-radius: 999px; background: #5e8059; color: #fff6de; font-size: 14px; font-weight: 800; box-shadow: 0 3px 0 #42633e; }
@@ -71,13 +73,13 @@
 
 /* Detours (a fire, or the wrong place for this step) get a warmer note. */
 .coach.detour .coach-card { background: #fff1d9f7; }
-.coach.detour .coach-eyebrow { color: #b46a3c; }
+.coach.detour .coach-chapter { color: #b46a3c; }
 
 /* Tucked away: a slim pill that still names the step. */
 .coach-pill { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 40px; padding: 5px 10px 5px 6px; border: 1px solid #fff8df; border-radius: 999px; background: #fbf5e6f2; box-shadow: 0 2px 0 #8874542e, 0 6px 16px #3d33281f; color: #5e5545; font-size: 12px; }
 .coach-pill img { width: 28px; height: 28px; object-fit: contain; }
 .coach-pill .pictogram { width: 24px; height: 24px; }
-.coach-pill .coach-count { font-size: 10px; font-weight: 900; }
+.coach-pill .coach-count { font-size: 12px; font-weight: 900; }
 .coach-pill b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: #466749; }
 .coach-pill svg { flex: none; transform: rotate(180deg); color: #6d7a5c; }
 
@@ -114,10 +116,9 @@
 
 @media (max-width: 350px) {
   .coach-card { grid-template-columns: 36px minmax(0, 1fr); gap: 8px; }
-  .coach-eyebrow { padding-right: 84px; font-size: 8.5px; letter-spacing: .07em; }
+  .coach-eyebrow { padding-right: 84px; letter-spacing: .02em; }
   .coach-bot { width: 36px; height: 36px; }
   .coach-title { font-size: 17px; }
-  .coach-text { font-size: 12px; }
   .overlay.begin h2 { font-size: 25px; }
   .overlay.begin .card button.begin-option { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
   .begin-option img { width: 52px; height: 52px; }
@@ -129,7 +130,7 @@
   .coach-card { grid-template-columns: 32px minmax(0, 1fr); gap: 8px; padding: 7px 10px 10px 8px; }
   .coach-bot { width: 32px; height: 32px; }
   .coach-title { font-size: 16px; }
-  .coach-text { font-size: 11.5px; line-height: 1.38; }
+  .coach-text { font-size: 13px; line-height: 1.38; }
   .hud .today-list { top: var(--below-inventory, calc(126px + var(--safe-t))); }
   .hud:has(.action-dock:not([hidden])) .coach .coach-text,
   .hud:has(.action-dock:not([hidden])) .coach .coach-actions { display: none; }

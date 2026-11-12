@@ -89,6 +89,7 @@ npm run art:check  # checks brief coverage, 4× sizes, transparency, fonts, and 
 npm run restoration:smoke # after build: touch vine care, pause/reload, keyboard care, nursery and monitor
 npm run seasons:smoke     # after build: storms, lightning fire, fire line, portrait, dig, burrow scope, sorting, goals, morning card, fire map; phone, small phone and landscape
 npm run tutorial:smoke    # after build: plays the whole tutorial with real taps on a phone, then desktop, landscape and small-phone layouts, tuck/skip/resume, reload and Start fresh
+npm run readability:smoke # after build: measures every visible text on 17 screens at 8 window sizes (320px phone to 1920px desktop); --report prints every size
 ```
 
 Add `?debug` to the URL to expose `window.__game` (and `window.__systems`: fire, progress, tutorial and night-tick helpers) for poking around in the console.

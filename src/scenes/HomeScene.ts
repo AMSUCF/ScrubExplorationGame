@@ -23,6 +23,11 @@ import { Interactable, PlayScene } from './PlayScene';
 
 const S = 1 / ART_SCALE;
 const T = HOME_TILE;
+/** Furniture labels are drawn at 10px in the room and never shown smaller than this on screen (CSS px). */
+const LABEL_FONT = 10;
+const LABEL_MIN_PX = 13;
+/** Past this, readable labels would cover the furniture (landscape phones): the nav bar names things instead. */
+const LABEL_MAX_SCALE = 2;
 
 const ITEM_TEX: Partial<Record<HomeItem['kind'], string>> = {
   cradle: 'cradle',
@@ -38,6 +43,8 @@ export class HomeScene extends PlayScene {
   private furniture!: Phaser.GameObjects.Container;
   private blockers!: Phaser.Physics.Arcade.StaticGroup;
   private level = 0;
+  private labels: Phaser.GameObjects.Text[] = [];
+  private labelScale = 1;
   private spawn: 'door' | 'cradle' | { x: number; y: number } = 'door';
 
   constructor() {
@@ -108,6 +115,11 @@ export class HomeScene extends PlayScene {
     const fitH = band / (h * T + 24);
     // A stable whole-room overview; large, touch-friendly detail views live in the home toolbar.
     const zoom = Phaser.Math.Clamp(Math.min(fitW, fitH), 0.35, 2.6);
+    // A small room view (phones) would shrink the furniture labels below reading size: grow them.
+    // While the camera glides, keep whichever is larger so they never dip below it on the way.
+    const labelScale = Math.max(1, LABEL_MIN_PX / (LABEL_FONT * zoom));
+    this.setLabelScale(glide === true ? Math.max(labelScale, this.labelScale) : labelScale);
+    if (glide === true) this.time.delayedCall(380, () => this.setLabelScale(labelScale));
     const cam = this.cameras.main;
     cam.stopFollow(); cam.removeBounds();
     // Centre the room in the band rather than on the screen.
@@ -120,6 +132,11 @@ export class HomeScene extends PlayScene {
     cam.setZoom(zoom * dpr);
     cam.centerOn(x, y);
   };
+
+  private setLabelScale(scale: number): void {
+    this.labelScale = scale;
+    for (const label of this.labels) label.setScale(scale).setResolution(3 * scale).setVisible(scale <= LABEL_MAX_SCALE);
+  }
 
   private addHomeNavigation(): void {
     const nav = document.createElement('nav'); nav.className = 'home-nav'; nav.setAttribute('aria-label', 'Inside the pod');
@@ -158,6 +175,7 @@ export class HomeScene extends PlayScene {
   private buildFurniture(): void {
     this.tweens.killTweensOf(this.furniture.getAll());
     this.furniture.removeAll(true);
+    this.labels = [];
     this.blockers.clear(true, true);
     const add = <T extends Phaser.GameObjects.GameObject>(o: T) => {
       this.furniture.add(o);
@@ -199,7 +217,8 @@ export class HomeScene extends PlayScene {
       if (labels[it.kind]) {
         const tex = ITEM_TEX[it.kind]!;
         const height = this.textures.get(tex).getSourceImage().height / ART_SCALE;
-        add(this.add.text(x, y - height - 5, labels[it.kind]!, { fontFamily: 'Nunito', fontSize: '10px', color: '#5e6a4f', backgroundColor: '#f9efd9', padding: { x: 4, y: 2 } }).setOrigin(.5, 1).setResolution(3));
+        const label = add(this.add.text(x, y - height - 5, labels[it.kind]!, { fontFamily: 'Nunito', fontSize: `${LABEL_FONT}px`, color: '#5e6a4f', backgroundColor: '#f9efd9', padding: { x: 4, y: 2 } }).setOrigin(.5, 1).setResolution(3 * this.labelScale).setScale(this.labelScale).setVisible(this.labelScale <= LABEL_MAX_SCALE));
+        this.labels.push(label);
       }
       for (const t of this.footprint(it)) {
         const zone = this.add.zone(t.tx * T + T / 2, t.ty * T + T / 2, T - 4, T - 6);

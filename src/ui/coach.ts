@@ -38,6 +38,7 @@ export class Coach {
   private dirty = false;
   private skipTimer: number | null = null;
   private height = -1;
+  private localHeight = -1;
   private cover = 0;
   private inset = 0;
   private measuredAt = 0;
@@ -168,7 +169,7 @@ export class Coach {
     return `<div class="coach-card">
       <img class="coach-bot" src="${services.icon('robot')}" alt="" />
       <div class="coach-body">
-        <div class="coach-eyebrow">${eyebrow} · <span class="coach-count" aria-label="step ${g.index + 1} of ${g.total}">${g.index + 1}/${g.total}</span></div>
+        <div class="coach-eyebrow"><span class="coach-chapter">${eyebrow} ·</span><span class="coach-count" aria-label="step ${g.index + 1} of ${g.total}">${g.index + 1}/${g.total}</span></div>
         <h2 class="coach-title">${safe(g.title)}</h2>
         <p class="coach-text">${safe(g.text)}</p>
         ${g.ack ? `<div class="coach-actions"><button class="coach-ack" data-coach="ack">${ICON.done}<span>${safe(g.ack)}</span></button></div>` : ''}
@@ -210,13 +211,16 @@ export class Coach {
     const stacked = this.inTopStack();
     const own = stacked ? this.root.getBoundingClientRect().bottom : 0;
     const inset = Math.round(Math.max(top, inv, own));
+    // On-screen size for the camera and the hand; the HUD's own (possibly zoomed) units for its CSS.
     const h = this.root.hidden ? 0 : Math.round(this.root.getBoundingClientRect().height);
+    const local = this.root.hidden ? 0 : this.root.offsetHeight;
     this.cover = stacked ? h : 0;
     const moved = Math.abs(inset - this.inset) > 2 || h !== this.height;
     this.inset = inset;
-    if (h !== this.height) {
-      this.height = h;
-      this.hud.style.setProperty('--coach-h', `${h ? h + 8 : 0}px`);
+    this.height = h;
+    if (local !== this.localHeight) {
+      this.localHeight = local;
+      this.hud.style.setProperty('--coach-h', `${local ? local + 8 : 0}px`);
     }
     // The coach grew, shrank, or slid down under a taller inventory: let the pod re-frame its room.
     if (moved) for (const cb of this.listeners) cb();
